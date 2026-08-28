@@ -33,8 +33,43 @@ export type PriceFrequency = (typeof PRICE_FREQUENCIES)[number];
 export const LISTING_STATUSES = ["AVAILABLE", "RENTED", "SOLD", "TAKEN_DOWN"] as const;
 export type ListingStatus = (typeof LISTING_STATUSES)[number];
 
-export const REVIEW_TYPES = ["REVIEW", "COMPLAINT"] as const;
+export const REVIEW_TYPES = ["REVIEW", "COMPLAINT", "AGENT_REPORT"] as const;
 export type ReviewType = (typeof REVIEW_TYPES)[number];
+
+export const RELATIONSHIP_TYPES = ["CHILD", "SPOUSE", "RELATIVE", "CARETAKER", "PROPERTY_MANAGER", "OTHER"] as const;
+export type RelationshipType = (typeof RELATIONSHIP_TYPES)[number];
+
+export const RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
+  CHILD: "Son / Daughter of the owner",
+  SPOUSE: "Spouse of the owner",
+  RELATIVE: "Other relative of the owner",
+  CARETAKER: "Caretaker",
+  PROPERTY_MANAGER: "Property manager",
+  OTHER: "Other (not an agent)",
+};
+
+export const DOC_TYPES = [
+  "C_OF_O",
+  "DEED_OF_ASSIGNMENT",
+  "GOVERNORS_CONSENT",
+  "LAND_USE_CHARGE_RECEIPT",
+  "UTILITY_BILL",
+  "TENANCY_AGREEMENT",
+  "VALID_ID",
+  "OTHER",
+] as const;
+export type DocType = (typeof DOC_TYPES)[number];
+
+export const DOC_TYPE_LABELS: Record<DocType, string> = {
+  C_OF_O: "Certificate of Occupancy (C of O)",
+  DEED_OF_ASSIGNMENT: "Deed of Assignment",
+  GOVERNORS_CONSENT: "Governor's Consent",
+  LAND_USE_CHARGE_RECEIPT: "Land Use Charge (property tax) receipt",
+  UTILITY_BILL: "Utility bill in owner's name",
+  TENANCY_AGREEMENT: "Existing tenancy agreement naming the owner",
+  VALID_ID: "Owner's valid ID (NIN, passport, driver's license)",
+  OTHER: "Other proof of ownership",
+};
 
 export const LAGOS_AREAS = [
   "Lekki Phase 1",

@@ -16,7 +16,9 @@ export default function ReviewList({ reviews }: { reviews: ReviewItem[] }) {
         <li key={review.id} className="rounded-md border border-gray-200 bg-white p-4">
           <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              {review.type === "COMPLAINT" ? (
+              {review.type === "AGENT_REPORT" ? (
+                <span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">⚠ Reported as Agent</span>
+              ) : review.type === "COMPLAINT" ? (
                 <span className="rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">Complaint</span>
               ) : (
                 <span className="rounded bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">Review</span>

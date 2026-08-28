@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
+import { getPropertyTrustTier } from "@/lib/verification";
 
 export type PropertySearchFilters = {
   q?: string;
@@ -40,6 +41,7 @@ export async function searchProperties(filters: PropertySearchFilters) {
       images: true,
       reviews: { select: { rating: true } },
       landlord: { select: { name: true, isVerifiedOwner: true } },
+      verificationDocs: { select: { status: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -49,7 +51,7 @@ export async function searchProperties(filters: PropertySearchFilters) {
     const ratings = p.reviews.map((r) => r.rating).filter((r): r is number => typeof r === "number");
     const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
     const { reviews: _reviews, ...rest } = p;
-    return { ...rest, avgRating, reviewCount: ratings.length };
+    return { ...rest, avgRating, reviewCount: ratings.length, trustTier: getPropertyTrustTier(p) };
   });
 }
 
@@ -63,6 +65,7 @@ export async function getPropertyById(id: string) {
         include: { author: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
       },
+      verificationDocs: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!property) return null;
@@ -70,5 +73,5 @@ export async function getPropertyById(id: string) {
   const ratings = property.reviews.map((r) => r.rating).filter((r): r is number => typeof r === "number");
   const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
 
-  return { ...property, avgRating, reviewCount: ratings.length };
+  return { ...property, avgRating, reviewCount: ratings.length, trustTier: getPropertyTrustTier(property) };
 }

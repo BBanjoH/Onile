@@ -60,3 +60,9 @@ export async function getCurrentUser() {
     return null;
   }
 }
+
+export async function getCurrentAdmin() {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") return null;
+  return user;
+}

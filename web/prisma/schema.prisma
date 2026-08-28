@@ -20,17 +20,17 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  phone        String
-  passwordHash String
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  phone           String
+  passwordHash    String
   // TENANT | LANDLORD | ADMIN
-  role         String   @default("TENANT")
+  role            String   @default("TENANT")
   // Self-declared at signup for landlords; a real deployment should add
   // phone OTP / ID verification before flipping this on. See README.
-  isVerifiedOwner Boolean @default(false)
-  createdAt    DateTime @default(now())
+  isVerifiedOwner Boolean  @default(false)
+  createdAt       DateTime @default(now())
 
   properties Property[]
   reviews    Review[]
@@ -39,33 +39,63 @@ model User {
 }
 
 model Property {
-  id          String @id @default(cuid())
-  title       String
-  description String
+  id             String  @id @default(cuid())
+  title          String
+  description    String
   // APARTMENT | DUPLEX | BUNGALOW | SELF_CONTAIN | MINI_FLAT | SHARED_ROOM | COMMERCIAL | LAND
-  propertyType String
+  propertyType   String
   // RENT | SALE | SHORTLET
-  purpose      String @default("RENT")
+  purpose        String  @default("RENT")
   // Stored in whole Naira.
   price          Int
-  priceFrequency String @default("YEARLY") // YEARLY | MONTHLY | ONE_TIME
+  priceFrequency String  @default("YEARLY") // YEARLY | MONTHLY | ONE_TIME
   address        String
   area           String
-  city           String @default("Lagos")
-  state          String @default("Lagos")
+  city           String  @default("Lagos")
+  state          String  @default("Lagos")
   bedrooms       Int?
   bathrooms      Int?
   // Comma-separated amenity tags (kept flat for SQLite/Postgres portability).
-  amenities String @default("")
+  amenities      String  @default("")
   // AVAILABLE | RENTED | SOLD | TAKEN_DOWN
-  status        String  @default("AVAILABLE")
-  isDirectOwner Boolean @default(true)
+  status         String  @default("AVAILABLE")
+  isDirectOwner  Boolean @default(true)
 
   landlordId String
   landlord   User   @relation(fields: [landlordId], references: [id], onDelete: Cascade)
 
-  images  PropertyImage[]
-  reviews Review[]
+  // --- Landlord identity & anti-impersonation verification -------------
+  //
+  // Many landlords (esp. elderly ones) don't operate the account
+  // themselves; a family member, caretaker, or property manager posts on
+  // their behalf. Rather than force that person to falsely claim "I am
+  // the owner" (which is exactly what agents already do), we make the
+  // relationship explicit and verify the *actual owner's* phone number,
+  // not just the poster's account.
+  postedOnBehalf     Boolean @default(false)
+  // Populated only when postedOnBehalf is true. When false, the owner IS
+  // the landlord account, so ownerName/ownerPhone mirror landlord.name/phone
+  // (see effectiveOwner() in src/lib/verification.ts — don't read these
+  // fields directly, use that helper).
+  ownerName          String  @default("")
+  ownerPhone         String  @default("")
+  // CHILD | SPOUSE | RELATIVE | CARETAKER | PROPERTY_MANAGER | OTHER
+  posterRelationship String  @default("")
+
+  // Tier 1: the effective owner's phone number received and confirmed a
+  // one-time code (works even on a basic feature phone with no app/data —
+  // see lib/sms.ts). Tier 2: Onile staff called that number directly and
+  // confirmed ownership + authorization. Tier 3: an ownership document was
+  // reviewed and approved (see PropertyVerificationDocument below).
+  ownerPhoneVerifiedAt  DateTime?
+  ownerCallVerifiedAt   DateTime?
+  ownerCallVerifiedById String?
+  ownerCallNote         String    @default("")
+
+  images           PropertyImage[]
+  reviews          Review[]
+  verificationDocs PropertyVerificationDocument[]
+  otpCodes         OtpCode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -82,6 +112,52 @@ model PropertyImage {
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
+// Ownership documents submitted for a specific listing (a Certificate of
+// Occupancy, Deed of Assignment, a recent Land Use Charge/utility bill in
+// the owner's name, etc). Reviewed manually by an admin — this is the
+// highest-trust verification tier and, unlike a phone check, is tied to
+// proof of the property itself rather than just a phone number.
+model PropertyVerificationDocument {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  // C_OF_O | DEED_OF_ASSIGNMENT | GOVERNORS_CONSENT | LAND_USE_CHARGE_RECEIPT | UTILITY_BILL | TENANCY_AGREEMENT | VALID_ID | OTHER
+  docType String
+  fileUrl String
+
+  // PENDING | APPROVED | REJECTED
+  status       String @default("PENDING")
+  reviewerNote String @default("")
+
+  submittedById String
+  reviewedById  String?
+  reviewedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([propertyId])
+  @@index([status])
+}
+
+// Short-lived one-time codes used to verify a phone number actually
+// belongs to whoever is claimed as the property's owner. Delivery is
+// pluggable (see src/lib/sms.ts) — works with nothing more than a basic
+// phone that can receive an SMS or a call reading out the code, so it
+// doesn't require the owner to be smartphone-literate.
+model OtpCode {
+  id         String    @id @default(cuid())
+  propertyId String
+  property   Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  phone      String
+  code       String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([propertyId, phone])
+}
+
 model Review {
   id         String   @id @default(cuid())
   propertyId String
@@ -89,13 +165,17 @@ model Review {
   authorId   String
   author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  // REVIEW | COMPLAINT
+  // REVIEW | COMPLAINT | AGENT_REPORT
   type       String  @default("REVIEW")
-  rating     Int? // 1-5, required for REVIEW, optional for COMPLAINT
+  rating     Int? // 1-5, required for REVIEW, optional otherwise
   title      String
   body       String
   livedThere Boolean @default(true)
   moveInYear Int?
+
+  // Moderation for AGENT_REPORT (and any complaint an admin has actioned).
+  moderatorNote       String    @default("")
+  moderatorResolvedAt DateTime?
 
   createdAt DateTime @default(now())
 

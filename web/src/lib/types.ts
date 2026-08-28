@@ -1,3 +1,5 @@
+import type { TrustTier } from "@/lib/verification";
+
 export type PropertyImage = { id: string; url: string };
 
 export type PropertyListItem = {
@@ -16,9 +18,11 @@ export type PropertyListItem = {
   amenities: string;
   status: string;
   isDirectOwner: boolean;
+  postedOnBehalf: boolean;
   images: PropertyImage[];
   avgRating: number | null;
   reviewCount: number;
+  trustTier: TrustTier;
   landlord?: { name: string; isVerifiedOwner: boolean };
   createdAt: string;
 };

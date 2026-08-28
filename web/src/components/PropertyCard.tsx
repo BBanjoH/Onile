@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatNaira, priceFrequencyLabel, PROPERTY_TYPE_LABELS, type PropertyType } from "@/lib/constants";
 import type { PropertyListItem } from "@/lib/types";
+import TrustBadge from "@/components/TrustBadge";
 
 export default function PropertyCard({ property }: { property: PropertyListItem }) {
   const cover = property.images[0]?.url;
@@ -18,15 +19,11 @@ export default function PropertyCard({ property }: { property: PropertyListItem 
         )}
       </div>
       <div className="space-y-1 p-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <span className="rounded bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
             {property.purpose === "RENT" ? "For Rent" : property.purpose === "SALE" ? "For Sale" : "Shortlet"}
           </span>
-          {property.isDirectOwner && (
-            <span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-              Direct from Owner
-            </span>
-          )}
+          <TrustBadge tier={property.trustTier} />
         </div>
         <h3 className="line-clamp-1 font-semibold text-gray-900">{property.title}</h3>
         <p className="line-clamp-1 text-sm text-gray-500">

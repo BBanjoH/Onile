@@ -42,6 +42,12 @@ export default function Navbar() {
             </>
           )}
 
+          {!loading && user?.role === "ADMIN" && (
+            <Link href="/admin" className="text-gray-700 hover:text-brand-700">
+              Admin
+            </Link>
+          )}
+
           {!loading && user && (
             <button onClick={handleLogout} className="text-gray-700 hover:text-brand-700">
               Log out

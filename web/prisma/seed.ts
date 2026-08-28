@@ -56,6 +56,47 @@ async function main() {
     },
   });
 
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@onile.app" },
+    update: {},
+    create: {
+      name: "Onile Trust & Safety",
+      email: "admin@onile.app",
+      phone: "2348012345099",
+      passwordHash,
+      role: "ADMIN",
+    },
+  });
+
+  // A caretaker account posting honestly on behalf of an elderly relative
+  // who doesn't use a smartphone — the "posted on behalf" flow.
+  const caretaker = await prisma.user.upsert({
+    where: { email: "yusuf.caretaker@example.com" },
+    update: {},
+    create: {
+      name: "Yusuf Bello",
+      email: "yusuf.caretaker@example.com",
+      phone: "2348055512345",
+      passwordHash,
+      role: "LANDLORD",
+    },
+  });
+
+  // An account behaving like an agent: posts under one phone number while
+  // claiming a series of different "owners" — this is the pattern the
+  // duplicate-phone fraud signal is built to catch.
+  const suspiciousAgent = await prisma.user.upsert({
+    where: { email: "kunle.suspicious@example.com" },
+    update: {},
+    create: {
+      name: "Kunle Okonji",
+      email: "kunle.suspicious@example.com",
+      phone: "2348099990001",
+      passwordHash,
+      role: "LANDLORD",
+    },
+  });
+
   const propertiesData = [
     {
       title: "Newly Renovated 2 Bedroom Flat, Off Admiralty Way",
@@ -132,6 +173,58 @@ async function main() {
       amenities: "Furnished,Wi-Fi,DSTV,Inverter/Solar",
       landlordId: landlord1.id,
     },
+    {
+      title: "Room in Family House for Rent, Ogba",
+      description:
+        "A clean room in a family compound, posted by the owner's son on his behalf — Alhaji Bello is retired and doesn't use a smartphone, but his number below is verified and he's aware of every inquiry.",
+      propertyType: "SHARED_ROOM" as const,
+      purpose: "RENT" as const,
+      price: 350_000,
+      priceFrequency: "YEARLY",
+      address: "9 Ogunlana Street, Ogba",
+      area: "Ogba",
+      bedrooms: 1,
+      bathrooms: 1,
+      amenities: "Water Borehole,Shared Kitchen",
+      landlordId: caretaker.id,
+      postedOnBehalf: true,
+      ownerName: "Alhaji Musa Bello",
+      ownerPhone: "2348099990001",
+      posterRelationship: "CHILD",
+      ownerPhoneVerifiedAt: new Date(),
+    },
+    {
+      title: "Spacious 4 Bedroom Duplex, Ajah — Owner Relocating",
+      description: "Well-maintained duplex, owner traveling and open to serious tenants only.",
+      propertyType: "DUPLEX" as const,
+      purpose: "RENT" as const,
+      price: 4_200_000,
+      priceFrequency: "YEARLY",
+      address: "14 Addo Road, Ajah",
+      area: "Ajah",
+      bedrooms: 4,
+      bathrooms: 4,
+      amenities: "Gated Estate,Parking Space",
+      landlordId: suspiciousAgent.id,
+    },
+    {
+      title: "3 Bedroom Flat, Gbagada — Quiet Family Compound",
+      description: "Posted on behalf of the property manager's client; serious inquiries only.",
+      propertyType: "APARTMENT" as const,
+      purpose: "RENT" as const,
+      price: 2_100_000,
+      priceFrequency: "YEARLY",
+      address: "31 Diya Street, Gbagada",
+      area: "Gbagada",
+      bedrooms: 3,
+      bathrooms: 3,
+      amenities: "Parking Space",
+      landlordId: suspiciousAgent.id,
+      postedOnBehalf: true,
+      ownerName: "Grace Adigun",
+      ownerPhone: "2348099990001",
+      posterRelationship: "PROPERTY_MANAGER",
+    },
   ];
 
   const properties = [];
@@ -148,6 +241,70 @@ async function main() {
         },
       }));
     properties.push(property);
+  }
+
+  // Verification-tier demo data: a pending doc, an approved (highest-trust)
+  // doc, and a call-verified listing, so all three trust badges show up.
+  const [lekkiFlat, yabaStudio, magoduDuplex, , , , ajahDuplexAgent] = properties;
+
+  const pendingDocExists = await prisma.propertyVerificationDocument.findFirst({
+    where: { propertyId: lekkiFlat.id, docType: "C_OF_O" },
+  });
+  if (!pendingDocExists) {
+    await prisma.propertyVerificationDocument.create({
+      data: {
+        propertyId: lekkiFlat.id,
+        docType: "C_OF_O",
+        fileUrl: "https://example.com/docs/lekki-c-of-o.jpg",
+        status: "PENDING",
+        submittedById: landlord1.id,
+      },
+    });
+  }
+
+  const approvedDocExists = await prisma.propertyVerificationDocument.findFirst({
+    where: { propertyId: magoduDuplex.id, docType: "C_OF_O" },
+  });
+  if (!approvedDocExists) {
+    await prisma.propertyVerificationDocument.create({
+      data: {
+        propertyId: magoduDuplex.id,
+        docType: "C_OF_O",
+        fileUrl: "https://example.com/docs/magodo-c-of-o.jpg",
+        status: "APPROVED",
+        reviewerNote: "Certificate of Occupancy matches the property address and the owner's name.",
+        submittedById: landlord1.id,
+        reviewedById: admin.id,
+        reviewedAt: new Date(),
+      },
+    });
+  }
+
+  if (!yabaStudio.ownerCallVerifiedAt) {
+    await prisma.property.update({
+      where: { id: yabaStudio.id },
+      data: {
+        ownerCallVerifiedAt: new Date(),
+        ownerCallVerifiedById: admin.id,
+        ownerCallNote: "Called the owner directly on the number listed on her account, confirmed ownership and authorization.",
+      },
+    });
+  }
+
+  const agentReportExists = await prisma.review.findFirst({
+    where: { propertyId: ajahDuplexAgent.id, type: "AGENT_REPORT", authorId: tenant2.id },
+  });
+  if (!agentReportExists) {
+    await prisma.review.create({
+      data: {
+        propertyId: ajahDuplexAgent.id,
+        authorId: tenant2.id,
+        type: "AGENT_REPORT",
+        title: "This looks like an agent, not an owner",
+        body: "I called this number about a different 'Ajah' listing last month too, but the person gave a different owner's name that time. Feels like an agent posing as several different landlords.",
+        livedThere: false,
+      },
+    });
   }
 
   const reviewsSeed = [
@@ -206,10 +363,13 @@ async function main() {
 
   console.log("Seed complete.");
   console.log("Demo accounts (password: password123):");
-  console.log("  Landlord: tunde.owner@example.com");
-  console.log("  Landlord: chioma.owner@example.com");
-  console.log("  Tenant:   bisi.tenant@example.com");
-  console.log("  Tenant:   femi.tenant@example.com");
+  console.log("  Landlord:  tunde.owner@example.com");
+  console.log("  Landlord:  chioma.owner@example.com");
+  console.log("  Caretaker: yusuf.caretaker@example.com (posts on behalf of an elderly relative)");
+  console.log("  Suspicious agent: kunle.suspicious@example.com (triggers duplicate-phone fraud signal)");
+  console.log("  Tenant:    bisi.tenant@example.com");
+  console.log("  Tenant:    femi.tenant@example.com");
+  console.log("  Admin:     admin@onile.app (Trust & Safety dashboard at /admin)");
 }
 
 main()

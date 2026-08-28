@@ -8,7 +8,10 @@ import {
   PURPOSES,
   PRICE_FREQUENCIES,
   LAGOS_AREAS,
+  RELATIONSHIP_TYPES,
+  RELATIONSHIP_LABELS,
   type PropertyType,
+  type RelationshipType,
 } from "@/lib/constants";
 
 export default function NewPropertyPage() {
@@ -25,6 +28,10 @@ export default function NewPropertyPage() {
   const [bathrooms, setBathrooms] = useState("");
   const [amenities, setAmenities] = useState("");
   const [imageUrls, setImageUrls] = useState("");
+  const [postedOnBehalf, setPostedOnBehalf] = useState(false);
+  const [ownerName, setOwnerName] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
+  const [posterRelationship, setPosterRelationship] = useState<RelationshipType>("CHILD");
   const [confirmIsOwner, setConfirmIsOwner] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,6 +63,10 @@ export default function NewPropertyPage() {
             .split("\n")
             .map((u) => u.trim())
             .filter(Boolean),
+          postedOnBehalf,
+          ownerName: postedOnBehalf ? ownerName : "",
+          ownerPhone: postedOnBehalf ? ownerPhone : "",
+          posterRelationship: postedOnBehalf ? posterRelationship : "",
           confirmIsOwner,
         }),
       });
@@ -100,6 +111,75 @@ export default function NewPropertyPage() {
             onChange={(e) => setDescription(e.target.value)}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
+        </div>
+
+        <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+          <label className="mb-2 block text-sm font-medium text-gray-700">Who is the property owner?</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPostedOnBehalf(false)}
+              className={`flex-1 rounded-md border px-3 py-2 text-sm ${!postedOnBehalf ? "border-brand-600 bg-brand-50 text-brand-700" : "border-gray-300 bg-white text-gray-600"}`}
+            >
+              I am the owner
+            </button>
+            <button
+              type="button"
+              onClick={() => setPostedOnBehalf(true)}
+              className={`flex-1 rounded-md border px-3 py-2 text-sm ${postedOnBehalf ? "border-brand-600 bg-brand-50 text-brand-700" : "border-gray-300 bg-white text-gray-600"}`}
+            >
+              I&apos;m posting for the owner
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Many landlords (especially older ones) don&apos;t use apps themselves — that&apos;s fine. If you&apos;re a
+            family member, caretaker, or property manager, say so honestly and give the actual owner&apos;s phone
+            number below. We verify that number directly so tenants know it&apos;s real. Property agents charging a
+            commission may not post on Onile.
+          </p>
+
+          {postedOnBehalf && (
+            <div className="mt-3 space-y-3 border-t border-gray-200 pt-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Your relationship to the owner</label>
+                <select
+                  value={posterRelationship}
+                  onChange={(e) => setPosterRelationship(e.target.value as RelationshipType)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  {RELATIONSHIP_TYPES.map((r) => (
+                    <option key={r} value={r}>
+                      {RELATIONSHIP_LABELS[r]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Owner&apos;s full name</label>
+                <input
+                  required={postedOnBehalf}
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Owner&apos;s phone number (any phone — doesn&apos;t need to be a smartphone)
+                </label>
+                <input
+                  required={postedOnBehalf}
+                  placeholder="2348012345678"
+                  value={ownerPhone}
+                  onChange={(e) => setOwnerPhone(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  After posting, we&apos;ll send a one-time code by SMS to this number to confirm it&apos;s real.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -231,8 +311,8 @@ export default function NewPropertyPage() {
             onChange={(e) => setConfirmIsOwner(e.target.checked)}
             className="mt-0.5"
           />
-          I confirm I am the owner/landlord of this property, or have written authorization to list it directly. I am
-          not an agent charging a middleman fee.
+          I confirm this listing is authorized by the property&apos;s actual owner, and that neither I nor anyone
+          else is charging the tenant a commission or agency fee for it.
         </label>
 
         <button
@@ -242,6 +322,10 @@ export default function NewPropertyPage() {
         >
           {loading ? "Publishing..." : "Publish listing"}
         </button>
+        <p className="text-center text-xs text-gray-500">
+          After publishing, verify the owner&apos;s phone number from your dashboard — verified listings get a trust
+          badge and get shown as more trustworthy to tenants.
+        </p>
       </form>
     </div>
   );

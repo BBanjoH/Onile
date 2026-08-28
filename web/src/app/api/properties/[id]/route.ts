@@ -12,17 +12,28 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const user = await getCurrentUser();
+  const isOwnerOrAdmin = !!user && (user.id === property.landlordId || user.role === "ADMIN");
 
-  // Only reveal the landlord's phone number to logged-in users. This is a
-  // light friction point that discourages scraping/spam while still making
-  // direct contact possible for real, interested tenants.
-  const { landlord, ...rest } = property;
+  // Only reveal phone numbers (landlord's and, for on-behalf listings, the
+  // owner's) to logged-in users. This is a light friction point that
+  // discourages scraping/spam while still making direct contact possible
+  // for real, interested tenants.
+  const { landlord, verificationDocs, ownerPhone, ...rest } = property;
   const responseLandlord = user
     ? landlord
     : { id: landlord.id, name: landlord.name, isVerifiedOwner: landlord.isVerifiedOwner, createdAt: landlord.createdAt };
 
+  // Document file URLs can contain personal ID/ownership scans — only the
+  // listing's own landlord or an admin should be able to see the file
+  // itself; everyone else just sees the verification status.
+  const responseDocs = verificationDocs.map((d) =>
+    isOwnerOrAdmin
+      ? d
+      : { id: d.id, docType: d.docType, status: d.status, createdAt: d.createdAt },
+  );
+
   return NextResponse.json({
-    property: { ...rest, landlord: responseLandlord },
+    property: { ...rest, ownerPhone: user ? ownerPhone : "", landlord: responseLandlord, verificationDocs: responseDocs },
     contactRequiresLogin: !user,
   });
 }

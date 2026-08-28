@@ -6,7 +6,7 @@ import { StarRating } from "@/components/StarRating";
 
 export default function ReviewForm({ propertyId }: { propertyId: string }) {
   const router = useRouter();
-  const [type, setType] = useState<"REVIEW" | "COMPLAINT">("REVIEW");
+  const [type, setType] = useState<"REVIEW" | "COMPLAINT" | "AGENT_REPORT">("REVIEW");
   const [rating, setRating] = useState(5);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -30,8 +30,8 @@ export default function ReviewForm({ propertyId }: { propertyId: string }) {
           rating: type === "REVIEW" ? rating : undefined,
           title,
           body,
-          livedThere,
-          moveInYear: moveInYear ? Number(moveInYear) : undefined,
+          livedThere: type === "AGENT_REPORT" ? false : livedThere,
+          moveInYear: type === "AGENT_REPORT" ? undefined : moveInYear ? Number(moveInYear) : undefined,
         }),
       });
       const data = await res.json();
@@ -75,7 +75,21 @@ export default function ReviewForm({ propertyId }: { propertyId: string }) {
         >
           Complaint
         </button>
+        <button
+          type="button"
+          onClick={() => setType("AGENT_REPORT")}
+          className={`flex-1 rounded-md border px-3 py-1.5 text-sm ${type === "AGENT_REPORT" ? "border-amber-500 bg-amber-50 text-amber-800" : "border-gray-300 text-gray-600"}`}
+        >
+          Report as Agent
+        </button>
       </div>
+
+      {type === "AGENT_REPORT" && (
+        <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-800">
+          Use this if you believe whoever posted this listing is an agent posing as the owner, or is charging a
+          commission/agency fee. This goes straight to our moderation team, not just other tenants.
+        </p>
+      )}
 
       {type === "REVIEW" && (
         <div>
@@ -90,7 +104,13 @@ export default function ReviewForm({ propertyId }: { propertyId: string }) {
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={type === "COMPLAINT" ? "e.g. Water supply issue" : "e.g. Great value, responsive owner"}
+          placeholder={
+            type === "COMPLAINT"
+              ? "e.g. Water supply issue"
+              : type === "AGENT_REPORT"
+                ? "e.g. This 'owner' is a known agent"
+                : "e.g. Great value, responsive owner"
+          }
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
       </div>
@@ -106,19 +126,21 @@ export default function ReviewForm({ propertyId }: { propertyId: string }) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          <input type="checkbox" checked={livedThere} onChange={(e) => setLivedThere(e.target.checked)} />
-          I lived/live here
-        </label>
-        <input
-          type="number"
-          placeholder="Move-in year"
-          value={moveInYear}
-          onChange={(e) => setMoveInYear(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-        />
-      </div>
+      {type !== "AGENT_REPORT" && (
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={livedThere} onChange={(e) => setLivedThere(e.target.checked)} />
+            I lived/live here
+          </label>
+          <input
+            type="number"
+            placeholder="Move-in year"
+            value={moveInYear}
+            onChange={(e) => setMoveInYear(e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+      )}
 
       <button
         type="submit"
