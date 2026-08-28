@@ -1,0 +1,103 @@
+// Onile database schema.
+//
+// Dev default is SQLite (zero-config, file-based) so the app runs anywhere
+// without provisioning external infra. For production, point DATABASE_URL
+// at a managed Postgres instance (e.g. Supabase/Railway/RDS) and change
+// `provider` below to "postgresql", then re-run `npx prisma migrate dev`.
+//
+// SQLite has no native enum type, so fields that are conceptually enums
+// (role, propertyType, purpose, status, reviewType) are stored as String
+// and validated at the API layer with zod (see src/lib/validation.ts).
+// This keeps the same schema working unchanged on Postgres too.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String
+  passwordHash String
+  // TENANT | LANDLORD | ADMIN
+  role         String   @default("TENANT")
+  // Self-declared at signup for landlords; a real deployment should add
+  // phone OTP / ID verification before flipping this on. See README.
+  isVerifiedOwner Boolean @default(false)
+  createdAt    DateTime @default(now())
+
+  properties Property[]
+  reviews    Review[]
+
+  @@index([role])
+}
+
+model Property {
+  id          String @id @default(cuid())
+  title       String
+  description String
+  // APARTMENT | DUPLEX | BUNGALOW | SELF_CONTAIN | MINI_FLAT | SHARED_ROOM | COMMERCIAL | LAND
+  propertyType String
+  // RENT | SALE | SHORTLET
+  purpose      String @default("RENT")
+  // Stored in whole Naira.
+  price          Int
+  priceFrequency String @default("YEARLY") // YEARLY | MONTHLY | ONE_TIME
+  address        String
+  area           String
+  city           String @default("Lagos")
+  state          String @default("Lagos")
+  bedrooms       Int?
+  bathrooms      Int?
+  // Comma-separated amenity tags (kept flat for SQLite/Postgres portability).
+  amenities String @default("")
+  // AVAILABLE | RENTED | SOLD | TAKEN_DOWN
+  status        String  @default("AVAILABLE")
+  isDirectOwner Boolean @default(true)
+
+  landlordId String
+  landlord   User   @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+
+  images  PropertyImage[]
+  reviews Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([area])
+  @@index([purpose])
+  @@index([status])
+}
+
+model PropertyImage {
+  id         String   @id @default(cuid())
+  url        String
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // REVIEW | COMPLAINT
+  type       String  @default("REVIEW")
+  rating     Int? // 1-5, required for REVIEW, optional for COMPLAINT
+  title      String
+  body       String
+  livedThere Boolean @default(true)
+  moveInYear Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([propertyId])
+}
