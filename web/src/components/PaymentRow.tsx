@@ -6,10 +6,13 @@ import { formatNaira, PAYMENT_METHODS } from "@/lib/constants";
 
 type Payment = { id: string; amount: number; dueDate: string; paidAt: string | null; status: string; method: string };
 
-export default function PaymentRow({ payment, canEdit = true }: { payment: Payment; canEdit?: boolean }) {
+type Props = { payment: Payment; canEdit?: boolean; canPayOnline?: boolean };
+
+export default function PaymentRow({ payment, canEdit = true, canPayOnline = false }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [method, setMethod] = useState<(typeof PAYMENT_METHODS)[number]>("BANK_TRANSFER");
+  const [payError, setPayError] = useState<string | null>(null);
 
   async function markPaid() {
     setBusy(true);
@@ -20,6 +23,22 @@ export default function PaymentRow({ payment, canEdit = true }: { payment: Payme
         body: JSON.stringify({ paidAt: new Date().toISOString(), method }),
       });
       if (res.ok) router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function payNow() {
+    setPayError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/payments/${payment.id}/checkout`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setPayError(data.error ?? "Could not start payment");
+        return;
+      }
+      window.location.href = data.link;
     } finally {
       setBusy(false);
     }
@@ -63,6 +82,18 @@ export default function PaymentRow({ payment, canEdit = true }: { payment: Payme
               className="rounded-md bg-brand-600 px-2 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-60"
             >
               Mark Paid
+            </button>
+          </div>
+        )}
+        {canPayOnline && payment.status !== "PAID" && (
+          <div className="flex flex-col items-end gap-1">
+            {payError && <p className="text-xs text-red-600">{payError}</p>}
+            <button
+              onClick={payNow}
+              disabled={busy}
+              className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+            >
+              {busy ? "Redirecting..." : "Pay Now"}
             </button>
           </div>
         )}

@@ -48,9 +48,15 @@ charge for). All of it lives under `/dashboard` (landlord) and
   dashboard/lease page load, and is also exposed as
   `GET /api/cron/rent-automation` (optionally protected by `CRON_SECRET`)
   for wiring to a real scheduler (Vercel Cron, a GitHub Actions cron job,
-  etc.) so it keeps running even if nobody opens the app that day. A
-  landlord marks a payment received with one click; no agent handling cash
-  or "collecting" on the owner's behalf.
+  etc.) so it keeps running even if nobody opens the app that day.
+- **Online rent payment via Flutterwave** — a tenant can pay a due
+  installment with one "Pay Now" click (card, bank transfer, or USSD,
+  through Flutterwave's hosted checkout) straight to the landlord; no agent
+  handling cash or "collecting" on the owner's behalf. If Flutterwave isn't
+  configured, "Pay Now" is simply hidden and the landlord's manual "Mark
+  Paid" (cash/bank transfer reconciliation) keeps working exactly as
+  before — online payment is additive, never required. See **Online rent
+  payment** below for setup and how it's verified.
 - **Automation Center** (`src/components/AutomationSummary.tsx`, shown at
   the top of `/dashboard`) — overdue rent, rent due soon, leases expiring
   within 60 days, open maintenance requests, and pending purchase offers,
@@ -65,6 +71,56 @@ charge for). All of it lives under `/dashboard` (landlord) and
   buyer can accept/decline a counter or withdraw a pending offer from
   `/my-rentals` — the negotiation an agent would normally broker (and take
   a cut of), done directly instead.
+
+### Online rent payment
+
+`src/lib/flutterwave.ts` wraps Flutterwave's **hosted Standard checkout**
+(`POST /v3/payments` → a link the tenant is redirected to). That's a
+deliberate choice over driving raw card/bank-transfer charges ourselves: it
+keeps card data off our servers entirely, and gives the tenant card, bank
+transfer, and USSD in one flow without us building custom OTP/PIN UI for
+each rail.
+
+**Setup**: get API keys from the Flutterwave dashboard (Settings > API —
+use the Test keys while developing) and set `FLW_PUBLIC_KEY`/`FLW_SECRET_KEY`
+in `.env`. For the webhook, set `FLW_SECRET_HASH` to the same value as your
+dashboard's Settings > Webhooks > "Secret Hash", and point that webhook at
+`POST https://<your-domain>/api/webhooks/flutterwave`. Leave all three
+unset in dev/CI and everything else keeps working — "Pay Now" just doesn't
+render (`isFlutterwaveConfigured()`), so this is entirely opt-in.
+
+**How a payment is confirmed** — this is the part worth being precise
+about, since it's real money:
+
+1. `POST /api/payments/:id/checkout` checks the caller is that lease's
+   tenant, generates a fresh reference (`flwTxRef`) server-side, and asks
+   Flutterwave for a hosted checkout link scoped to the payment's exact
+   amount.
+2. After paying, Flutterwave redirects the tenant's browser to
+   `GET /api/payments/callback` with `tx_ref`/`transaction_id`/`status`
+   query params. **These are treated as untrusted** (a tenant could hand-
+   craft that URL) — they're only used to look up which payment to react
+   to.
+3. Both that callback and the webhook (`POST /api/webhooks/flutterwave`)
+   funnel into `settlePaymentByTxRef()` (`src/lib/rentAutomation.ts`),
+   which independently calls `GET /v3/transactions/:id/verify` against
+   Flutterwave's API and checks the verified transaction's status,
+   currency, `tx_ref`, and amount against what we expect *before* ever
+   writing `PAID` to the database. A payment is never marked paid from a
+   redirect query string or webhook body alone.
+4. The webhook is the durable path (it fires independently of whether the
+   tenant's browser ever made it back to step 2) and is authenticated by
+   comparing the `verif-hash` header to `FLW_SECRET_HASH` with a
+   timing-safe comparison — Flutterwave webhooks work by echoing back a
+   shared secret, not an HMAC of the body.
+5. Both paths re-check the payment's status immediately before writing, so
+   whichever of the callback/webhook arrives second is a no-op rather than
+   double-processing.
+
+The landlord's manual "Mark Paid" button (for cash or an off-platform bank
+transfer) is untouched by any of this and always available — online
+payment is one more way to settle the same `RentPayment` row, not a
+replacement for it.
 
 ## Telling a landlord from an agent
 
@@ -192,3 +248,6 @@ All routes are under `/api` and return JSON:
 - `GET|POST /api/maintenance`, `PATCH /api/maintenance/:id` — raise (tenant) / list & update (landlord) maintenance requests
 - `GET|POST /api/offers`, `PATCH /api/offers/:id` — make an offer on a `SALE` listing (buyer); accept/reject/counter (seller) or accept/decline/withdraw (buyer)
 - `GET /api/cron/rent-automation` — generates upcoming rent installments and flags overdue ones; optionally protected by `CRON_SECRET` for scheduler use
+- `POST /api/payments/:id/checkout` — tenant starts an online payment; returns a Flutterwave hosted checkout `link`
+- `GET /api/payments/callback` — Flutterwave redirect target after checkout; re-verifies server-side before marking paid
+- `POST /api/webhooks/flutterwave` — durable payment confirmation, authenticated via the `verif-hash` header

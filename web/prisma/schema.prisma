@@ -179,11 +179,21 @@ model RentPayment {
 
   recordedById String?
 
+  // Flutterwave online-payment reconciliation. flwTxRef is our own
+  // generated reference (set when a "Pay Now" checkout is initiated);
+  // flwTransactionId is Flutterwave's transaction id, set only once the
+  // payment has been independently verified server-side (see
+  // src/lib/flutterwave.ts) — never trust a client redirect or webhook
+  // payload alone.
+  flwTxRef         String @default("")
+  flwTransactionId String @default("")
+
   createdAt DateTime @default(now())
 
   @@index([leaseId])
   @@index([status])
   @@index([dueDate])
+  @@index([flwTxRef])
 }
 
 // A tenant-reported issue against a property they lease. Lets a landlord

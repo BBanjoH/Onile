@@ -3,11 +3,26 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatNaira } from "@/lib/constants";
 import { ensureUpcomingRentPayment, flagOverduePayments } from "@/lib/rentAutomation";
+import { isFlutterwaveConfigured } from "@/lib/flutterwave";
 import PaymentRow from "@/components/PaymentRow";
 import LeaseStatusControl from "@/components/LeaseStatusControl";
 
-export default async function LeaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+const PAYMENT_BANNER: Record<string, { text: string; style: string }> = {
+  success: { text: "Payment received — thank you!", style: "bg-brand-50 text-brand-700" },
+  failed: { text: "That payment didn't go through. You can try again below.", style: "bg-red-50 text-red-700" },
+  cancelled: { text: "Payment cancelled.", style: "bg-gray-100 text-gray-600" },
+  error: { text: "Something went wrong starting that payment.", style: "bg-red-50 text-red-700" },
+};
+
+export default async function LeaseDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ payment?: string }>;
+}) {
   const { id } = await params;
+  const { payment: paymentBannerKey } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -23,6 +38,9 @@ export default async function LeaseDetailPage({ params }: { params: Promise<{ id
   if (lease.landlordId !== user.id && lease.tenantId !== user.id && user.role !== "ADMIN") redirect("/");
 
   const isLandlord = lease.landlordId === user.id || user.role === "ADMIN";
+  const isTenant = lease.tenantId === user.id;
+  const canPayOnline = isTenant && isFlutterwaveConfigured();
+  const banner = paymentBannerKey ? PAYMENT_BANNER[paymentBannerKey] : undefined;
 
   if (lease.status === "ACTIVE") await ensureUpcomingRentPayment(lease.id);
   await flagOverduePayments();
@@ -31,6 +49,8 @@ export default async function LeaseDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-4">
+      {banner && <p className={`rounded-md p-3 text-sm ${banner.style}`}>{banner.text}</p>}
+
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -80,7 +100,7 @@ export default async function LeaseDetailPage({ params }: { params: Promise<{ id
                   <th className="pb-2">Amount</th>
                   <th className="pb-2">Status</th>
                   <th className="pb-2">Paid</th>
-                  {isLandlord && <th className="pb-2 text-right">Action</th>}
+                  {(isLandlord || canPayOnline) && <th className="pb-2 text-right">Action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -88,6 +108,7 @@ export default async function LeaseDetailPage({ params }: { params: Promise<{ id
                   <PaymentRow
                     key={p.id}
                     canEdit={isLandlord}
+                    canPayOnline={canPayOnline}
                     payment={{
                       id: p.id,
                       amount: p.amount,
@@ -102,7 +123,13 @@ export default async function LeaseDetailPage({ params }: { params: Promise<{ id
             </table>
           </div>
         )}
-        {!isLandlord && (
+        {!isLandlord && canPayOnline && (
+          <p className="mt-3 text-xs text-gray-500">
+            "Pay Now" goes straight to your landlord via Flutterwave (card, bank transfer, or USSD) — no agent
+            collecting on their behalf.
+          </p>
+        )}
+        {!isLandlord && !canPayOnline && (
           <p className="mt-3 text-xs text-gray-500">
             Your landlord marks payments received here — pay them directly (bank transfer/cash), no agent commission
             involved.

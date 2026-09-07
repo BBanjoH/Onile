@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { verifyTransaction, transactionSatisfiesPayment, mapPaymentTypeToMethod } from "@/lib/flutterwave";
 
 // How far ahead of a lease's start/last-generated payment we pre-create the
 // next rent installment, so a landlord always has an upcoming due date on
@@ -65,6 +66,50 @@ export async function flagOverduePayments() {
     data: { status: "OVERDUE" },
   });
   return result.count;
+}
+
+export type SettlementResult = { ok: boolean; reason?: string; alreadyPaid?: boolean };
+
+/**
+ * The single place a RentPayment is ever flipped to PAID by an online
+ * transaction. Called from both the checkout redirect callback and the
+ * webhook, since either can arrive first (or the webhook can arrive
+ * without a redirect ever completing) — both paths must independently
+ * re-verify with Flutterwave rather than trusting whichever caller got
+ * there first, and neither should double-process if the other already
+ * settled it.
+ */
+export async function settlePaymentByTxRef(txRef: string, transactionId: string | number): Promise<SettlementResult> {
+  const payment = await prisma.rentPayment.findFirst({ where: { flwTxRef: txRef } });
+  if (!payment) return { ok: false, reason: "No payment found for this reference" };
+  if (payment.status === "PAID") return { ok: true, alreadyPaid: true };
+
+  let txn;
+  try {
+    txn = await verifyTransaction(transactionId);
+  } catch {
+    return { ok: false, reason: "Could not verify transaction with Flutterwave" };
+  }
+  if (!transactionSatisfiesPayment(txn, { txRef, amount: payment.amount })) {
+    return { ok: false, reason: "Transaction did not verify against the expected payment" };
+  }
+
+  // Re-check status right before writing — the webhook and the redirect
+  // callback race each other, and both call this function.
+  const current = await prisma.rentPayment.findUnique({ where: { id: payment.id } });
+  if (current?.status === "PAID") return { ok: true, alreadyPaid: true };
+
+  await prisma.rentPayment.update({
+    where: { id: payment.id },
+    data: {
+      status: "PAID",
+      paidAt: new Date(txn.created_at),
+      method: mapPaymentTypeToMethod(txn.payment_type),
+      note: "Paid online via Flutterwave",
+      flwTransactionId: String(txn.id),
+    },
+  });
+  return { ok: true };
 }
 
 export type LandlordAutomationSummary = {

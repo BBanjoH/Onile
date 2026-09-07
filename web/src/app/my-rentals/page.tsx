@@ -4,8 +4,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatNaira } from "@/lib/constants";
 import { getTenantSummary } from "@/lib/rentAutomation";
+import { isFlutterwaveConfigured } from "@/lib/flutterwave";
 import MaintenanceRequestForm from "@/components/MaintenanceRequestForm";
 import BuyerOfferActions from "@/components/BuyerOfferActions";
+import PayNowButton from "@/components/PayNowButton";
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING: "bg-amber-50 text-amber-800",
@@ -18,6 +20,8 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function MyRentalsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  const canPayOnline = isFlutterwaveConfigured();
 
   const [{ leases }, maintenanceRequests, offers] = await Promise.all([
     getTenantSummary(user.id),
@@ -57,7 +61,7 @@ export default async function MyRentalsPage() {
                     {new Date(lease.endDate).toLocaleDateString("en-NG")}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="space-y-1.5 text-right">
                   {lease.nextPayment ? (
                     <>
                       <p className="text-sm font-medium text-gray-900">{formatNaira(lease.nextPayment.amount)} due</p>
@@ -67,6 +71,7 @@ export default async function MyRentalsPage() {
                         {new Date(lease.nextPayment.dueDate).toLocaleDateString("en-NG")}
                         {lease.nextPayment.status === "OVERDUE" ? " — overdue" : ""}
                       </p>
+                      {canPayOnline && <PayNowButton paymentId={lease.nextPayment.id} />}
                     </>
                   ) : (
                     <p className="text-xs text-gray-400">Fully paid up</p>
