@@ -96,6 +96,48 @@ export const LAGOS_AREAS = [
   "Other",
 ] as const;
 
+export const LEASE_RENT_FREQUENCIES = ["YEARLY", "MONTHLY", "QUARTERLY"] as const;
+export type LeaseRentFrequency = (typeof LEASE_RENT_FREQUENCIES)[number];
+
+export const LEASE_STATUSES = ["ACTIVE", "ENDED", "TERMINATED"] as const;
+export type LeaseStatus = (typeof LEASE_STATUSES)[number];
+
+export const PAYMENT_METHODS = ["CASH", "BANK_TRANSFER", "CARD", "OTHER"] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export const PAYMENT_STATUSES = ["PENDING", "PAID", "OVERDUE"] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+export const MAINTENANCE_CATEGORIES = [
+  "PLUMBING",
+  "ELECTRICAL",
+  "STRUCTURAL",
+  "APPLIANCE",
+  "PEST_CONTROL",
+  "SECURITY",
+  "OTHER",
+] as const;
+export type MaintenanceCategory = (typeof MAINTENANCE_CATEGORIES)[number];
+
+export const MAINTENANCE_CATEGORY_LABELS: Record<MaintenanceCategory, string> = {
+  PLUMBING: "Plumbing",
+  ELECTRICAL: "Electrical",
+  STRUCTURAL: "Structural",
+  APPLIANCE: "Appliance",
+  PEST_CONTROL: "Pest Control",
+  SECURITY: "Security",
+  OTHER: "Other",
+};
+
+export const MAINTENANCE_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
+export type MaintenancePriority = (typeof MAINTENANCE_PRIORITIES)[number];
+
+export const MAINTENANCE_STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CANCELLED"] as const;
+export type MaintenanceStatus = (typeof MAINTENANCE_STATUSES)[number];
+
+export const OFFER_STATUSES = ["PENDING", "COUNTERED", "ACCEPTED", "REJECTED", "WITHDRAWN"] as const;
+export type OfferStatus = (typeof OFFER_STATUSES)[number];
+
 export function formatNaira(amount: number): string {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",

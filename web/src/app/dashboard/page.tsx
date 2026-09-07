@@ -3,12 +3,16 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import DashboardListingRow from "@/components/DashboardListingRow";
+import AutomationSummary from "@/components/AutomationSummary";
 import { effectiveOwner, getPropertyTrustTier } from "@/lib/verification";
+import { getLandlordAutomationSummary } from "@/lib/rentAutomation";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role !== "LANDLORD" && user.role !== "ADMIN") redirect("/");
+
+  const automationSummary = await getLandlordAutomationSummary(user.id);
 
   const properties = await prisma.property.findMany({
     where: { landlordId: user.id },
@@ -29,6 +33,20 @@ export default async function DashboardPage() {
           Post a Property
         </Link>
       </div>
+
+      <nav className="flex flex-wrap gap-2 text-sm">
+        <Link href="/dashboard/leases" className="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50">
+          Leases &amp; Rent
+        </Link>
+        <Link href="/dashboard/maintenance" className="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50">
+          Maintenance
+        </Link>
+        <Link href="/dashboard/offers" className="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50">
+          Purchase Offers
+        </Link>
+      </nav>
+
+      <AutomationSummary summary={automationSummary} />
 
       {properties.length === 0 ? (
         <p className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">

@@ -32,6 +32,12 @@ mobile/   Expo React Native app — a wrapper that builds into a real,
 - Contacting the landlord (phone number + a one-tap WhatsApp link) is gated
   behind a free login, which cuts spam/scraping while keeping contact
   itself free and direct — no agent in the middle.
+- **Property management automation** for once you've connected directly:
+  leases, an automated rent-collection schedule with overdue reminders, a
+  landlord "Automation Center" dashboard, tenant-raised maintenance
+  requests, and direct purchase-offer negotiation on sale listings — all
+  the admin an agent would otherwise insert themselves into (and charge
+  for). Full write-up in `web/README.md`.
 - **Five-layer landlord verification** to tell a real owner from an agent
   pretending to be one: honest proxy posting, owner phone OTP (works on a
   basic feature phone), a staff phone-call confirmation, ownership
@@ -83,5 +89,14 @@ app deployed somewhere reachable over HTTPS first.
 - Photo uploads instead of pasted image URLs.
 - In-app messaging as an alternative to WhatsApp for tenants without it.
 - Map view and saved searches/alerts.
+- Online rent payment (Paystack/Flutterwave) instead of the current
+  off-platform pay-then-mark-paid flow — the rent schedule/reminders
+  already exist, this would just add a "Pay now" button that settles the
+  same `RentPayment` row automatically.
+- Push/SMS/email delivery for the automation reminders (overdue rent,
+  lease expiry, new maintenance/offer activity) — today they're surfaced
+  in-app via the Automation Center, not pushed out.
+- Downloadable/e-signable tenancy agreement documents generated from a
+  `Lease` record.
 - An admin signup/promotion flow — the only way to create an `ADMIN`
   account today is directly in the database (or via the seed script).

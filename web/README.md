@@ -26,6 +26,45 @@ JSON API that both the website and the mobile app run on.
   service worker mean a phone browser can "Add to Home Screen" and get an
   app-like, standalone experience without visiting an app store. See
   `/mobile` for a proper native wrapper you can build into a real APK.
+- **Property management automation** — once a landlord and tenant/buyer
+  have connected directly (no agent), Onile takes over the admin an agent
+  or a spreadsheet would otherwise handle. See the section below.
+
+## Property management automation
+
+This is the part of the app that runs *after* the direct introduction —
+the tasks/services an agent would otherwise insert themselves into (and
+charge for). All of it lives under `/dashboard` (landlord) and
+`/my-rentals` (tenant/buyer).
+
+- **Leases** (`Lease` model) — a landlord formalizes a tenancy once terms
+  are agreed (property, tenant by email, dates, rent, deposit). Ending a
+  lease automatically frees the property back to `AVAILABLE` if no other
+  active lease references it.
+- **Automated rent collection** (`src/lib/rentAutomation.ts`) — the next
+  rent installment (`RentPayment`) is generated automatically ahead of its
+  due date for every active lease, and anything unpaid past a grace period
+  flips to `OVERDUE` automatically. This runs opportunistically on every
+  dashboard/lease page load, and is also exposed as
+  `GET /api/cron/rent-automation` (optionally protected by `CRON_SECRET`)
+  for wiring to a real scheduler (Vercel Cron, a GitHub Actions cron job,
+  etc.) so it keeps running even if nobody opens the app that day. A
+  landlord marks a payment received with one click; no agent handling cash
+  or "collecting" on the owner's behalf.
+- **Automation Center** (`src/components/AutomationSummary.tsx`, shown at
+  the top of `/dashboard`) — overdue rent, rent due soon, leases expiring
+  within 60 days, open maintenance requests, and pending purchase offers,
+  all in one glance instead of a landlord having to check each property.
+- **Maintenance requests** (`MaintenanceRequest` model) — a tenant with an
+  active lease reports an issue (category, priority, description); the
+  landlord tracks and updates its status across their whole portfolio at
+  `/dashboard/maintenance` instead of a scattered thread of phone calls.
+- **Purchase offers** (`PurchaseOffer` model) — on any `SALE` listing, a
+  logged-in buyer submits an offer directly from the property page; the
+  seller accepts, rejects, or counters it from `/dashboard/offers`, and the
+  buyer can accept/decline a counter or withdraw a pending offer from
+  `/my-rentals` — the negotiation an agent would normally broker (and take
+  a cut of), done directly instead.
 
 ## Telling a landlord from an agent
 
@@ -72,9 +111,10 @@ See `prisma/schema.prisma`. Core entities: `User` (tenant/landlord/admin),
 `Property` (+ `PropertyImage`, plus the proxy-posting and verification
 fields described above), `PropertyVerificationDocument`, `OtpCode`, and
 `Review` (doubles as review, complaint, or agent report via a `type`
-field). SQLite is the dev default (zero setup); the schema is written to be
-Postgres-compatible too (see the comment at the top of the schema file for
-the one-line switch).
+field), plus the management-automation entities `Lease`, `RentPayment`,
+`MaintenanceRequest`, and `PurchaseOffer`. SQLite is the dev default (zero
+setup); the schema is written to be Postgres-compatible too (see the
+comment at the top of the schema file for the one-line switch).
 
 ## Local setup
 
@@ -90,13 +130,19 @@ Demo accounts seeded by `db:seed` (password for all: `password123`):
 
 | Role                | Email                          | Notes                                                    |
 | ------------------- | ------------------------------ | --------------------------------------------------------- |
-| Landlord            | tunde.owner@example.com        | Has a pending doc + an approved (document-verified) listing |
+| Landlord            | tunde.owner@example.com        | Has a pending doc + an approved (document-verified) listing; also the seeded lease/maintenance/offer demo below |
 | Landlord            | chioma.owner@example.com       | Has a call-verified listing                               |
 | Landlord (caretaker) | yusuf.caretaker@example.com   | Posts on behalf of an elderly relative, phone-verified    |
 | Landlord (agent-like) | kunle.suspicious@example.com | Reuses one phone across different "owners" — trips the fraud-signal detector |
 | Tenant              | bisi.tenant@example.com        |                                                             |
 | Tenant              | femi.tenant@example.com        | Filed the seeded agent report                              |
 | Admin               | admin@onile.app                | Trust & Safety dashboard at `/admin`                       |
+
+`tunde.owner@example.com` also has a seeded active lease with
+`bisi.tenant@example.com` (one paid + one overdue rent payment, plus an
+open maintenance request) and a pending purchase offer from
+`femi.tenant@example.com` — log in as either side to see `/dashboard/leases`,
+`/dashboard/maintenance`, `/dashboard/offers`, or `/my-rentals` populated.
 
 ## Moving to production
 
@@ -140,3 +186,9 @@ All routes are under `/api` and return JSON:
 - `PATCH /api/admin/documents/:id` — approve/reject a document (admin only)
 - `PATCH /api/admin/properties/:id/call-verify` — log a phone-call confirmation (admin only)
 - `PATCH /api/admin/reviews/:id/resolve` — resolve an agent report (admin only)
+- `GET|POST /api/leases`, `GET|PATCH /api/leases/:id` — create/list/update leases (landlord); tenants can read their own
+- `POST /api/leases/:id/payments` — log an ad-hoc rent payment on a lease
+- `PATCH /api/payments/:id` — mark a scheduled rent installment paid (or edit method/note)
+- `GET|POST /api/maintenance`, `PATCH /api/maintenance/:id` — raise (tenant) / list & update (landlord) maintenance requests
+- `GET|POST /api/offers`, `PATCH /api/offers/:id` — make an offer on a `SALE` listing (buyer); accept/reject/counter (seller) or accept/decline/withdraw (buyer)
+- `GET /api/cron/rent-automation` — generates upcoming rent installments and flags overdue ones; optionally protected by `CRON_SECRET` for scheduler use

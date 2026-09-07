@@ -361,6 +361,85 @@ async function main() {
     }
   }
 
+  // --- Property management automation demo data --------------------------
+
+  const lekkiFlatForLease = properties[0];
+  let lease = await prisma.lease.findFirst({ where: { propertyId: lekkiFlatForLease.id, tenantId: tenant1.id } });
+  if (!lease) {
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 2);
+    const endDate = new Date(startDate);
+    endDate.setFullYear(endDate.getFullYear() + 1);
+
+    lease = await prisma.lease.create({
+      data: {
+        propertyId: lekkiFlatForLease.id,
+        tenantId: tenant1.id,
+        landlordId: landlord1.id,
+        startDate,
+        endDate,
+        rentAmount: lekkiFlatForLease.price,
+        rentFrequency: "YEARLY",
+        depositAmount: 200_000,
+        notes: "Agreed directly via WhatsApp after the listing — no agency fee paid.",
+        status: "ACTIVE",
+      },
+    });
+    await prisma.property.update({ where: { id: lekkiFlatForLease.id }, data: { status: "RENTED" } });
+
+    // One payment already settled at move-in, and one now overdue — shows
+    // both the PAID history and the overdue automation flag on day one.
+    await prisma.rentPayment.create({
+      data: {
+        leaseId: lease.id,
+        amount: lease.rentAmount,
+        dueDate: startDate,
+        paidAt: startDate,
+        method: "BANK_TRANSFER",
+        status: "PAID",
+        recordedById: landlord1.id,
+      },
+    });
+    const overdueDate = new Date();
+    overdueDate.setDate(overdueDate.getDate() - 10);
+    await prisma.rentPayment.create({
+      data: { leaseId: lease.id, amount: lease.rentAmount, dueDate: overdueDate, status: "OVERDUE" },
+    });
+  }
+
+  const maintenanceExists = await prisma.maintenanceRequest.findFirst({
+    where: { propertyId: lekkiFlatForLease.id, tenantId: tenant1.id },
+  });
+  if (!maintenanceExists) {
+    await prisma.maintenanceRequest.create({
+      data: {
+        propertyId: lekkiFlatForLease.id,
+        tenantId: tenant1.id,
+        category: "PLUMBING",
+        priority: "HIGH",
+        title: "Kitchen sink leaking",
+        description: "Water pooling under the kitchen sink every time it's used — looks like a loose pipe joint.",
+        status: "OPEN",
+      },
+    });
+  }
+
+  const magoduDuplexForOffer = magoduDuplex;
+  const offerExists = await prisma.purchaseOffer.findFirst({
+    where: { propertyId: magoduDuplexForOffer.id, buyerId: tenant2.id },
+  });
+  if (!offerExists) {
+    await prisma.purchaseOffer.create({
+      data: {
+        propertyId: magoduDuplexForOffer.id,
+        buyerId: tenant2.id,
+        amount: Math.round(magoduDuplexForOffer.price * 0.9),
+        message: "Cash buyer, can close within 30 days.",
+        status: "PENDING",
+      },
+    });
+  }
+
   console.log("Seed complete.");
   console.log("Demo accounts (password: password123):");
   console.log("  Landlord:  tunde.owner@example.com");
@@ -370,6 +449,11 @@ async function main() {
   console.log("  Tenant:    bisi.tenant@example.com");
   console.log("  Tenant:    femi.tenant@example.com");
   console.log("  Admin:     admin@onile.app (Trust & Safety dashboard at /admin)");
+  console.log("");
+  console.log("Property management automation demo:");
+  console.log("  tunde.owner@example.com has an active lease with bisi.tenant@example.com,");
+  console.log("  one paid + one overdue rent payment, and an open maintenance request.");
+  console.log("  tunde.owner@example.com also has a pending purchase offer from femi.tenant@example.com.");
 }
 
 main()

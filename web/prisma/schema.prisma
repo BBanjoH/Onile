@@ -32,8 +32,12 @@ model User {
   isVerifiedOwner Boolean  @default(false)
   createdAt       DateTime @default(now())
 
-  properties Property[]
-  reviews    Review[]
+  properties        Property[]
+  reviews           Review[]
+  leasesAsTenant    Lease[]              @relation("TenantLeases")
+  leasesAsLandlord  Lease[]              @relation("LandlordLeases")
+  maintenanceOpened MaintenanceRequest[]
+  offersMade        PurchaseOffer[]
 
   @@index([role])
 }
@@ -96,12 +100,145 @@ model Property {
   reviews          Review[]
   verificationDocs PropertyVerificationDocument[]
   otpCodes         OtpCode[]
+  leases           Lease[]
+  maintenanceReqs  MaintenanceRequest[]
+  offers           PurchaseOffer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([area])
   @@index([purpose])
+  @@index([status])
+}
+
+// --- Property management automation ------------------------------------
+//
+// Everything below this line is the "after you've found each other
+// directly" half of the product: once a landlord and tenant have agreed
+// terms without paying an agent, Onile takes over the admin an agent (or a
+// spreadsheet) would otherwise handle — the lease record, the rent
+// schedule and reminders, maintenance tracking, and purchase offers for
+// SALE listings — so going direct doesn't mean going without tooling.
+
+// A formalized tenancy between a landlord and a tenant for a specific
+// property. Created by the landlord once they've agreed terms with a
+// tenant directly (e.g. after contacting them via WhatsApp from the
+// listing page) — Onile doesn't broker the negotiation, just the paperwork
+// and rent tracking afterwards.
+model Lease {
+  id         String @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   User   @relation("TenantLeases", fields: [tenantId], references: [id], onDelete: Cascade)
+  landlordId String
+  landlord   User @relation("LandlordLeases", fields: [landlordId], references: [id], onDelete: Cascade)
+
+  startDate DateTime
+  endDate   DateTime
+  // Rent per `rentFrequency` period, in whole Naira.
+  rentAmount     Int
+  rentFrequency  String @default("YEARLY") // YEARLY | MONTHLY | QUARTERLY
+  depositAmount  Int    @default(0)
+  notes          String @default("")
+
+  // ACTIVE | ENDED | TERMINATED
+  status String @default("ACTIVE")
+
+  payments RentPayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([landlordId])
+  @@index([status])
+}
+
+// One rent installment on a lease's payment schedule. Rows are generated
+// automatically ahead of each due date (see lib/rentAutomation.ts) so
+// landlords get a running ledger and reminder queue instead of having to
+// track due dates themselves — the automation this app exists to provide.
+model RentPayment {
+  id      String @id @default(cuid())
+  leaseId String
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  amount  Int
+  dueDate DateTime
+  paidAt  DateTime?
+  // CASH | BANK_TRANSFER | CARD | OTHER — free-text record of how it was paid.
+  method  String    @default("")
+  note    String    @default("")
+
+  // PENDING | PAID | OVERDUE
+  status String @default("PENDING")
+
+  recordedById String?
+
+  createdAt DateTime @default(now())
+
+  @@index([leaseId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+// A tenant-reported issue against a property they lease. Lets a landlord
+// manage repairs/upkeep across a whole portfolio from one place instead of
+// a scattered thread of phone calls and WhatsApp messages.
+model MaintenanceRequest {
+  id         String @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantId   String
+  tenant     User     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // PLUMBING | ELECTRICAL | STRUCTURAL | APPLIANCE | PEST_CONTROL | SECURITY | OTHER
+  category String
+  // LOW | MEDIUM | HIGH | URGENT
+  priority String @default("MEDIUM")
+  title       String
+  description String
+
+  // OPEN | IN_PROGRESS | RESOLVED | CANCELLED
+  status       String @default("OPEN")
+  landlordNote String @default("")
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([status])
+}
+
+// A direct purchase offer on a SALE listing, replacing the back-and-forth
+// an agent would normally broker (and take a cut of) between a buyer and
+// seller.
+model PurchaseOffer {
+  id         String @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyerId    String
+  buyer      User     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  amount  Int
+  message String @default("")
+
+  counterAmount  Int?
+  counterMessage String @default("")
+
+  // PENDING | COUNTERED | ACCEPTED | REJECTED | WITHDRAWN
+  status String @default("PENDING")
+
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@index([propertyId])
+  @@index([buyerId])
   @@index([status])
 }
 

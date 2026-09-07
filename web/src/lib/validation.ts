@@ -8,6 +8,12 @@ import {
   ROLES,
   RELATIONSHIP_TYPES,
   DOC_TYPES,
+  LEASE_RENT_FREQUENCIES,
+  LEASE_STATUSES,
+  PAYMENT_METHODS,
+  MAINTENANCE_CATEGORIES,
+  MAINTENANCE_PRIORITIES,
+  MAINTENANCE_STATUSES,
 } from "@/lib/constants";
 
 const phoneSchema = z
@@ -125,9 +131,78 @@ export const resolveReviewSchema = z.object({
   moderatorNote: z.string().trim().max(1000).default(""),
 });
 
+// --- Property management automation -------------------------------------
+
+export const createLeaseSchema = z.object({
+  propertyId: z.string().min(1),
+  tenantEmail: z.string().trim().email().toLowerCase(),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+  rentAmount: z.number().int().positive().max(10_000_000_000),
+  rentFrequency: z.enum(LEASE_RENT_FREQUENCIES).default("YEARLY"),
+  depositAmount: z.number().int().nonnegative().max(10_000_000_000).default(0),
+  notes: z.string().trim().max(2000).default(""),
+});
+
+export const updateLeaseSchema = z.object({
+  status: z.enum(LEASE_STATUSES),
+});
+
+export const recordPaymentSchema = z.object({
+  amount: z.number().int().positive().max(10_000_000_000),
+  dueDate: z.coerce.date(),
+  paidAt: z.coerce.date().optional(),
+  method: z.enum(PAYMENT_METHODS).optional(),
+  note: z.string().trim().max(1000).default(""),
+});
+
+export const updatePaymentSchema = z.object({
+  paidAt: z.coerce.date().nullable().optional(),
+  method: z.enum(PAYMENT_METHODS).optional(),
+  note: z.string().trim().max(1000).optional(),
+});
+
+export const createMaintenanceRequestSchema = z.object({
+  propertyId: z.string().min(1),
+  category: z.enum(MAINTENANCE_CATEGORIES),
+  priority: z.enum(MAINTENANCE_PRIORITIES).default("MEDIUM"),
+  title: z.string().trim().min(3).max(150),
+  description: z.string().trim().min(10).max(3000),
+});
+
+export const updateMaintenanceRequestSchema = z.object({
+  status: z.enum(MAINTENANCE_STATUSES).optional(),
+  landlordNote: z.string().trim().max(1000).optional(),
+});
+
+export const createOfferSchema = z.object({
+  propertyId: z.string().min(1),
+  amount: z.number().int().positive().max(50_000_000_000),
+  message: z.string().trim().max(2000).default(""),
+});
+
+export const respondOfferSchema = z
+  .object({
+    status: z.enum(["COUNTERED", "ACCEPTED", "REJECTED"]),
+    counterAmount: z.number().int().positive().max(50_000_000_000).optional(),
+    counterMessage: z.string().trim().max(2000).default(""),
+  })
+  .refine((data) => data.status !== "COUNTERED" || typeof data.counterAmount === "number", {
+    message: "Enter a counter-offer amount",
+    path: ["counterAmount"],
+  });
+
+export const buyerOfferActionSchema = z.object({
+  status: z.enum(["ACCEPTED", "REJECTED", "WITHDRAWN"]),
+});
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreatePropertyInput = z.infer<typeof createPropertySchema>;
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
+export type CreateLeaseInput = z.infer<typeof createLeaseSchema>;
+export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
+export type CreateMaintenanceRequestInput = z.infer<typeof createMaintenanceRequestSchema>;
+export type CreateOfferInput = z.infer<typeof createOfferSchema>;
 
 export const ROLE_VALUES = ROLES;

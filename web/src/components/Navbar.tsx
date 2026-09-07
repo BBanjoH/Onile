@@ -33,6 +33,9 @@ export default function Navbar() {
               <Link href="/dashboard" className="text-gray-700 hover:text-brand-700">
                 My Listings
               </Link>
+              <Link href="/dashboard/leases" className="text-gray-700 hover:text-brand-700">
+                Leases
+              </Link>
               <Link
                 href="/properties/new"
                 className="rounded-md bg-brand-600 px-3 py-1.5 font-medium text-white hover:bg-brand-700"
@@ -40,6 +43,12 @@ export default function Navbar() {
                 Post a Property
               </Link>
             </>
+          )}
+
+          {!loading && user && (
+            <Link href="/my-rentals" className="text-gray-700 hover:text-brand-700">
+              My Rentals
+            </Link>
           )}
 
           {!loading && user?.role === "ADMIN" && (

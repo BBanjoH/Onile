@@ -8,6 +8,7 @@ import { StarRating } from "@/components/StarRating";
 import ReviewList from "@/components/ReviewList";
 import ReviewForm from "@/components/ReviewForm";
 import TrustBadge from "@/components/TrustBadge";
+import OfferForm from "@/components/OfferForm";
 
 export default async function PropertyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -204,6 +205,8 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
             No agent, no viewing fees. You&apos;re speaking directly with the owner or someone they&apos;ve
             authorized.
           </p>
+
+          {property.purpose === "SALE" && user && user.id !== property.landlordId && <OfferForm propertyId={property.id} />}
         </div>
       </div>
     </div>
