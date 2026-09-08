@@ -1,94 +1,100 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import DashboardListingRow from "@/components/DashboardListingRow";
-import AutomationSummary from "@/components/AutomationSummary";
-import { effectiveOwner, getPropertyTrustTier } from "@/lib/verification";
+import NeedsAttention from "@/components/NeedsAttention";
+import BigActionCard from "@/components/BigActionCard";
 import { getLandlordAutomationSummary } from "@/lib/rentAutomation";
 
-export default async function DashboardPage() {
+export const metadata = { title: "My Home" };
+
+/**
+ * The landlord's home screen.
+ *
+ * Deliberately plain: a greeting, a short list of things that actually
+ * need doing today, then a handful of large buttons. Everything else in
+ * the app is one tap from here. An older landlord should be able to open
+ * this and know what to do without reading a manual or learning any
+ * vocabulary.
+ */
+function greeting(): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-NG", { hour: "numeric", hour12: false, timeZone: "Africa/Lagos" }).format(new Date()),
+  );
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+export default async function DashboardHomePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.role !== "LANDLORD" && user.role !== "ADMIN") redirect("/");
+  if (user.role !== "LANDLORD" && user.role !== "ADMIN") redirect("/my-rentals");
 
-  const automationSummary = await getLandlordAutomationSummary(user.id);
+  const [summary, propertyCount] = await Promise.all([
+    getLandlordAutomationSummary(user.id),
+    prisma.property.count({ where: { landlordId: user.id } }),
+  ]);
 
-  const properties = await prisma.property.findMany({
-    where: { landlordId: user.id },
-    include: {
-      images: true,
-      reviews: { select: { rating: true, type: true } },
-      verificationDocs: { orderBy: { createdAt: "desc" } },
-      landlord: { select: { name: true, phone: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const firstName = user.name.split(" ")[0];
+  const lateCount = summary.overduePayments.length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">My Listings</h1>
-        <Link href="/properties/new" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
-          Post a Property
-        </Link>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {greeting()}, {firstName}
+        </h1>
+        <p className="text-gray-600">This is your property, rent and repairs in one place.</p>
       </div>
 
-      <nav className="flex flex-wrap gap-2 text-sm">
-        <Link href="/dashboard/leases" className="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50">
-          Leases &amp; Rent
-        </Link>
-        <Link href="/dashboard/maintenance" className="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50">
-          Maintenance
-        </Link>
-        <Link href="/dashboard/offers" className="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50">
-          Purchase Offers
-        </Link>
-      </nav>
+      <NeedsAttention summary={summary} />
 
-      <AutomationSummary summary={automationSummary} />
-
-      {properties.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
-          You haven&apos;t posted any properties yet.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {properties.map((p) => {
-            const ratings = p.reviews.map((r) => r.rating).filter((r): r is number => typeof r === "number");
-            const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
-            const complaintCount = p.reviews.filter((r) => r.type === "COMPLAINT" || r.type === "AGENT_REPORT").length;
-            const owner = effectiveOwner(p, p.landlord);
-            return (
-              <DashboardListingRow
-                key={p.id}
-                property={{
-                  id: p.id,
-                  title: p.title,
-                  status: p.status,
-                  price: p.price,
-                  priceFrequency: p.priceFrequency,
-                  area: p.area,
-                  imageUrl: p.images[0]?.url,
-                  avgRating,
-                  reviewCount: ratings.length,
-                  complaintCount,
-                  trustTier: getPropertyTrustTier(p),
-                  ownerPhone: owner.phone,
-                  ownerPhoneVerifiedAt: p.ownerPhoneVerifiedAt ? p.ownerPhoneVerifiedAt.toISOString() : null,
-                  ownerCallVerifiedAt: p.ownerCallVerifiedAt ? p.ownerCallVerifiedAt.toISOString() : null,
-                  documents: p.verificationDocs.map((d) => ({
-                    id: d.id,
-                    docType: d.docType,
-                    status: d.status,
-                    reviewerNote: d.reviewerNote,
-                  })),
-                }}
-              />
-            );
-          })}
+      <section aria-labelledby="menu-heading" className="space-y-3">
+        <h2 id="menu-heading" className="text-lg font-bold text-gray-900">
+          What would you like to do?
+        </h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <BigActionCard
+            href="/dashboard/properties"
+            icon="🏠"
+            title="My Properties"
+            description={
+              propertyCount === 0
+                ? "Add your first house or flat"
+                : `${propertyCount} propert${propertyCount === 1 ? "y" : "ies"} on Onile`
+            }
+          />
+          <BigActionCard
+            href="/dashboard/leases"
+            icon="💰"
+            title="Rent & Tenants"
+            description="See who has paid and who has not"
+            badge={lateCount}
+          />
+          <BigActionCard
+            href="/dashboard/maintenance"
+            icon="🔧"
+            title="Repairs"
+            description="Problems your tenants reported"
+            badge={summary.openMaintenanceCount}
+          />
+          <BigActionCard
+            href="/dashboard/offers"
+            icon="🤝"
+            title="Offers to Buy"
+            description="People who want to buy your property"
+            badge={summary.pendingOfferCount}
+          />
+          <BigActionCard
+            href="/properties/new"
+            icon="➕"
+            title="Add a Property"
+            description="Put a house or flat on Onile — it's free"
+            highlight
+          />
+          <BigActionCard href="/help" icon="❓" title="Get Help" description="How to use Onile, and how to reach us" />
         </div>
-      )}
+      </section>
     </div>
   );
 }

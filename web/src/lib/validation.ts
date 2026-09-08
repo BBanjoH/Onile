@@ -16,10 +16,14 @@ import {
   MAINTENANCE_STATUSES,
 } from "@/lib/constants";
 
+// People write their number every which way — 0803 123 4567, +234 803 123
+// 4567, 234-803-123-4567. Strip the punctuation first and judge the digits,
+// rather than making someone guess the format we happen to want.
 const phoneSchema = z
   .string()
   .trim()
-  .regex(/^\+?[0-9]{10,15}$/, "Enter a valid phone number, e.g. 2348012345678");
+  .transform((value) => value.replace(/[^0-9+]/g, ""))
+  .refine((value) => /^\+?[0-9]{10,15}$/.test(value), "Enter a valid phone number, for example 0803 123 4567");
 
 export const signupSchema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -29,9 +33,11 @@ export const signupSchema = z.object({
   role: z.enum(["TENANT", "LANDLORD"] as unknown as [string, ...string[]]).default("TENANT"),
 });
 
+// Accepts either an email address or a phone number in one box, so nobody
+// has to remember which one they signed up with.
 export const loginSchema = z.object({
-  email: z.string().trim().email().toLowerCase(),
-  password: z.string().min(1),
+  identifier: z.string().trim().min(3, "Enter your phone number or email").max(200),
+  password: z.string().min(1, "Enter your password"),
 });
 
 export const createPropertySchema = z

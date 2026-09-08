@@ -3,6 +3,42 @@
 Next.js 16 (App Router) + Prisma + Tailwind CSS. This is the web app and the
 JSON API that both the website and the mobile app run on.
 
+> **Going live?** Follow [`../LAUNCH.md`](../LAUNCH.md) — a step-by-step,
+> non-technical guide to deploying Onile with a real domain and database.
+
+## Built for older, non-technical landlords
+
+Onile's core customer is frequently 55+, on a mid-range Android phone, and
+not confident with apps. That is a design constraint, not an afterthought,
+and it drives a set of decisions worth knowing about before you change
+anything:
+
+- **Everything is bigger.** The Tailwind type scale is shifted up a step in
+  `tailwind.config.ts` (so `text-sm` renders at 18px, not 14px), the root
+  font size is 18px, and every control is held at ~48px minimum in
+  `globals.css`. Changing those two files changes readability everywhere at
+  once.
+- **The user can enlarge it further.** The **A / A+ / A++** control in the
+  header (`TextSizeControl.tsx`) scales the root rem size up to ~28% and
+  remembers the choice per device. A small inline script in `layout.tsx`
+  applies it before first paint so there's no flash of small text.
+- **No jargon reaches the screen.** The database stores `OVERDUE`,
+  `IN_PROGRESS`, `TAKEN_DOWN`; `src/lib/labels.ts` turns those into "Late —
+  not paid", "Being fixed now", "Hidden — nobody can see it". Add to that
+  file rather than rendering a raw status anywhere.
+- **The home screen tells you what to do.** `/dashboard` is a greeting, a
+  short list of full-sentence things needing attention ("Bisi has not paid
+  ₦450,000 rent. It was due 6 days ago."), and six large buttons. It is
+  deliberately not a dashboard of numbers.
+- **Phone number is a login identity.** Many landlords have no email they
+  can recall. One box on the login page accepts either, in any format —
+  see `src/lib/phone.ts`.
+- **Contrast is raised.** `gray-400`/`gray-500` are overridden a step
+  darker in the Tailwind config, because ageing eyes lose contrast
+  sensitivity well before acuity.
+- **Help is always one tap away**, with a real WhatsApp number and phone
+  number on it (`/help`).
+
 ## Features
 
 - **Direct listings** — only landlord accounts can post properties, and
@@ -182,6 +218,14 @@ npm run db:seed             # seed demo landlords, tenants, listings, reviews
 npm run dev                 # http://localhost:3000
 ```
 
+Other scripts:
+
+| Command | What it does |
+| ------- | ------------ |
+| `npm run create-admin` | Creates (or promotes) an admin account — the only way to make one, by design |
+| `npm run db:migrate` | `prisma migrate deploy`, for applying migrations in production |
+| `npm run db:seed` | Demo data. **Refuses to run in production** — it creates accounts with a publicly-known password |
+
 Demo accounts seeded by `db:seed` (password for all: `password123`):
 
 | Role                | Email                          | Notes                                                    |
@@ -247,7 +291,8 @@ All routes are under `/api` and return JSON:
 - `PATCH /api/payments/:id` — mark a scheduled rent installment paid (or edit method/note)
 - `GET|POST /api/maintenance`, `PATCH /api/maintenance/:id` — raise (tenant) / list & update (landlord) maintenance requests
 - `GET|POST /api/offers`, `PATCH /api/offers/:id` — make an offer on a `SALE` listing (buyer); accept/reject/counter (seller) or accept/decline/withdraw (buyer)
-- `GET /api/cron/rent-automation` — generates upcoming rent installments and flags overdue ones; optionally protected by `CRON_SECRET` for scheduler use
+- `GET /api/cron/rent-automation` — generates upcoming rent installments and flags overdue ones; optionally protected by `CRON_SECRET` (accepts a bearer token, an `x-cron-secret` header, or `?secret=`, so it works with Vercel Cron out of the box — see `vercel.json`)
+- `GET /api/health` — for uptime monitors; checks the database really answers, and returns 503 if not
 - `POST /api/payments/:id/checkout` — tenant starts an online payment; returns a Flutterwave hosted checkout `link`
 - `GET /api/payments/callback` — Flutterwave redirect target after checkout; re-verifies server-side before marking paid
 - `POST /api/webhooks/flutterwave` — durable payment confirmation, authenticated via the `verif-hash` header

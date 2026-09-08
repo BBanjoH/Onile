@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MAINTENANCE_STATUSES } from "@/lib/constants";
+import { repairStatusLabel } from "@/lib/labels";
 
 export default function MaintenanceStatusControl({ id, status, landlordNote }: { id: string; status: string; landlordNote: string }) {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function MaintenanceStatusControl({ id, status, landlordNote }: {
       >
         {MAINTENANCE_STATUSES.map((s) => (
           <option key={s} value={s}>
-            {s.replace("_", " ")}
+            {repairStatusLabel(s)}
           </option>
         ))}
       </select>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatNaira } from "@/lib/constants";
+import { leaseStatusLabel } from "@/lib/labels";
 import LeaseForm from "@/components/LeaseForm";
 
 export default async function LeasesPage() {
@@ -25,12 +26,18 @@ export default async function LeasesPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-900">Leases &amp; Rent</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Rent &amp; Tenants</h1>
+        <p className="text-gray-600">
+          Add a tenant once you have agreed with them. Onile then keeps track of every rent payment for you and tells
+          you when someone has not paid.
+        </p>
+      </div>
       <LeaseForm properties={properties} />
 
       {leases.length === 0 ? (
         <p className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
-          No leases yet. Create one once you&apos;ve agreed terms with a tenant.
+          You have not added a tenant yet. Use the button above once you have agreed rent with someone.
         </p>
       ) : (
         <div className="space-y-2">
@@ -61,11 +68,11 @@ export default async function LeasesPage() {
                             : "bg-red-50 text-red-700"
                       }`}
                     >
-                      {lease.status}
+                      {leaseStatusLabel(lease.status)}
                     </span>
                     {lease.payments.length > 0 && (
                       <span className="rounded bg-red-50 px-2 py-0.5 font-medium text-red-700">
-                        {lease.payments.length} overdue
+                        {lease.payments.length} rent payment{lease.payments.length === 1 ? "" : "s"} late
                       </span>
                     )}
                   </div>

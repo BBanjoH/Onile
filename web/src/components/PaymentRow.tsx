@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatNaira, PAYMENT_METHODS } from "@/lib/constants";
+import { rentStatusLabel, paymentMethodLabel, friendlyDate, relativeDayPhrase } from "@/lib/labels";
 
 type Payment = { id: string; amount: number; dueDate: string; paidAt: string | null; status: string; method: string };
 
@@ -52,15 +53,24 @@ export default function PaymentRow({ payment, canEdit = true, canPayOnline = fal
 
   return (
     <tr className="border-b border-gray-100 last:border-0">
-      <td className="py-2 text-sm text-gray-700">{new Date(payment.dueDate).toLocaleDateString("en-NG")}</td>
-      <td className="py-2 text-sm font-medium text-gray-900">{formatNaira(payment.amount)}</td>
-      <td className="py-2">
-        <span className={`rounded px-2 py-0.5 text-xs font-medium ${statusStyles[payment.status] ?? "bg-gray-100 text-gray-600"}`}>
-          {payment.status}
+      <td className="py-3 text-sm text-gray-700">
+        {friendlyDate(payment.dueDate)}
+        {payment.status !== "PAID" && (
+          <span className="block text-xs text-gray-500">
+            {relativeDayPhrase(payment.dueDate, { latePrefix: "late" })}
+          </span>
+        )}
+      </td>
+      <td className="py-3 text-sm font-medium text-gray-900">{formatNaira(payment.amount)}</td>
+      <td className="py-3">
+        <span className={`inline-block rounded px-2 py-1 text-xs font-semibold ${statusStyles[payment.status] ?? "bg-gray-100 text-gray-600"}`}>
+          {rentStatusLabel(payment.status)}
         </span>
       </td>
-      <td className="py-2 text-sm text-gray-500">
-        {payment.paidAt ? `${new Date(payment.paidAt).toLocaleDateString("en-NG")}${payment.method ? ` (${payment.method})` : ""}` : "—"}
+      <td className="py-3 text-sm text-gray-500">
+        {payment.paidAt
+          ? `${friendlyDate(payment.paidAt)}${payment.method ? ` (${paymentMethodLabel(payment.method)})` : ""}`
+          : "—"}
       </td>
       <td className="py-2 text-right">
         {canEdit && payment.status !== "PAID" && (
@@ -72,7 +82,7 @@ export default function PaymentRow({ payment, canEdit = true, canPayOnline = fal
             >
               {PAYMENT_METHODS.map((m) => (
                 <option key={m} value={m}>
-                  {m.replace("_", " ")}
+                  {paymentMethodLabel(m)}
                 </option>
               ))}
             </select>

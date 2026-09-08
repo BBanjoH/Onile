@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatNaira } from "@/lib/constants";
+import { offerStatusLabel } from "@/lib/labels";
 import OfferResponseForm from "@/components/OfferResponseForm";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -26,9 +27,10 @@ export default async function OffersPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-900">Purchase Offers</h1>
-      <p className="text-sm text-gray-600">
-        Buyers make offers directly here — negotiate and accept without an agent taking a cut of the sale.
+      <h1 className="text-2xl font-bold text-gray-900">Offers to Buy</h1>
+      <p className="text-gray-600">
+        People who want to buy your property make their offer here. You can accept it, turn it down, or ask for a
+        higher price — with no agent taking a cut of your sale.
       </p>
 
       {offers.length === 0 ? (
@@ -51,14 +53,15 @@ export default async function OffersPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-brand-700">{formatNaira(o.amount)}</p>
-                  <span className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[o.status] ?? "bg-gray-100"}`}>
-                    {o.status}
+                  <span className={`inline-block rounded px-2 py-1 text-xs font-semibold ${STATUS_STYLES[o.status] ?? "bg-gray-100"}`}>
+                    {offerStatusLabel(o.status, "seller")}
                   </span>
                 </div>
               </div>
               {o.status === "COUNTERED" && o.counterAmount && (
                 <p className="mt-2 text-sm text-blue-700">
-                  Your counter: {formatNaira(o.counterAmount)} {o.counterMessage && `— "${o.counterMessage}"`} (awaiting buyer)
+                  You asked for {formatNaira(o.counterAmount)} {o.counterMessage && `— "${o.counterMessage}"`}. Waiting for
+                  the buyer to reply.
                 </p>
               )}
               {(o.status === "PENDING" || o.status === "COUNTERED") && (

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { MAINTENANCE_CATEGORY_LABELS, type MaintenanceCategory } from "@/lib/constants";
+import { repairPriorityLabel, friendlyDate } from "@/lib/labels";
 import MaintenanceStatusControl from "@/components/MaintenanceStatusControl";
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -24,7 +25,10 @@ export default async function MaintenancePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-900">Maintenance Requests</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Repairs</h1>
+      <p className="text-gray-600">
+        Problems your tenants have reported. Change the box under each one to tell your tenant what is happening.
+      </p>
 
       {requests.length === 0 ? (
         <p className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
@@ -37,11 +41,12 @@ export default async function MaintenancePage() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[r.priority] ?? "bg-gray-100"}`}>
-                      {r.priority}
+                    <span className={`inline-block rounded px-2 py-1 text-xs font-semibold ${PRIORITY_STYLES[r.priority] ?? "bg-gray-100"}`}>
+                      {repairPriorityLabel(r.priority)}
                     </span>
                     <span className="text-xs text-gray-500">
-                      {MAINTENANCE_CATEGORY_LABELS[r.category as MaintenanceCategory] ?? r.category}
+                      {MAINTENANCE_CATEGORY_LABELS[r.category as MaintenanceCategory] ?? r.category} &middot; reported{" "}
+                      {friendlyDate(r.createdAt)}
                     </span>
                   </div>
                   <p className="mt-1 font-medium text-gray-900">{r.title}</p>

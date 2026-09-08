@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LEASE_STATUSES } from "@/lib/constants";
+import { leaseStatusLabel } from "@/lib/labels";
 
 export default function LeaseStatusControl({ leaseId, status }: { leaseId: string; status: string }) {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function LeaseStatusControl({ leaseId, status }: { leaseId: strin
     >
       {LEASE_STATUSES.map((s) => (
         <option key={s} value={s}>
-          {s}
+          {leaseStatusLabel(s)}
         </option>
       ))}
     </select>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatNaira } from "@/lib/constants";
+import { repairStatusLabel, offerStatusLabel, friendlyDate, relativeDayPhrase } from "@/lib/labels";
 import { getTenantSummary } from "@/lib/rentAutomation";
 import { isFlutterwaveConfigured } from "@/lib/flutterwave";
 import MaintenanceRequestForm from "@/components/MaintenanceRequestForm";
@@ -39,13 +40,14 @@ export default async function MyRentalsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">My Rentals &amp; Purchases</h1>
+      <h1 className="text-2xl font-bold text-gray-900">My Home &amp; Payments</h1>
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-gray-900">My Leases</h2>
+        <h2 className="text-lg font-semibold text-gray-900">The place I rent</h2>
         {leases.length === 0 ? (
           <p className="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
-            No active leases. Once you and a landlord agree terms directly, they&apos;ll set up your lease here.
+            You are not renting a place through Onile yet. When you and an owner agree, they will add you here and
+            you will be able to pay your rent and report problems from this page.
           </p>
         ) : (
           leases.map((lease) => (
@@ -58,18 +60,19 @@ export default async function MyRentalsPage() {
                   <p className="text-sm text-gray-500">Landlord: {lease.landlordName}</p>
                   <p className="text-sm text-gray-500">
                     {formatNaira(lease.rentAmount)} / {lease.rentFrequency.toLowerCase()} &middot; ends{" "}
-                    {new Date(lease.endDate).toLocaleDateString("en-NG")}
+                    {friendlyDate(lease.endDate)}
                   </p>
                 </div>
                 <div className="space-y-1.5 text-right">
                   {lease.nextPayment ? (
                     <>
-                      <p className="text-sm font-medium text-gray-900">{formatNaira(lease.nextPayment.amount)} due</p>
+                      <p className="text-sm font-medium text-gray-900">{formatNaira(lease.nextPayment.amount)} to pay</p>
                       <p
                         className={`text-xs font-medium ${lease.nextPayment.status === "OVERDUE" ? "text-red-600" : "text-gray-500"}`}
                       >
-                        {new Date(lease.nextPayment.dueDate).toLocaleDateString("en-NG")}
-                        {lease.nextPayment.status === "OVERDUE" ? " — overdue" : ""}
+                        {lease.nextPayment.status === "OVERDUE"
+                          ? `Late — was due ${relativeDayPhrase(lease.nextPayment.dueDate, { latePrefix: "ago" })}`
+                          : `Due ${relativeDayPhrase(lease.nextPayment.dueDate)}`}
                       </p>
                       {canPayOnline && <PayNowButton paymentId={lease.nextPayment.id} />}
                     </>
@@ -88,7 +91,7 @@ export default async function MyRentalsPage() {
 
       {maintenanceRequests.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-semibold text-gray-900">My Maintenance Requests</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Problems I reported</h2>
           <div className="space-y-2">
             {maintenanceRequests.map((r) => (
               <div key={r.id} className="rounded-lg border border-gray-200 bg-white p-3">
@@ -97,9 +100,11 @@ export default async function MyRentalsPage() {
                     <p className="font-medium text-gray-900">{r.title}</p>
                     <p className="text-sm text-gray-500">{r.property.title}</p>
                   </div>
-                  <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{r.status.replace("_", " ")}</span>
+                  <span className="inline-block rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
+                    {repairStatusLabel(r.status)}
+                  </span>
                 </div>
-                {r.landlordNote && <p className="mt-1 text-sm text-gray-600">Landlord: {r.landlordNote}</p>}
+                {r.landlordNote && <p className="mt-1 text-sm text-gray-600">Landlord says: {r.landlordNote}</p>}
               </div>
             ))}
           </div>
@@ -108,7 +113,7 @@ export default async function MyRentalsPage() {
 
       {offers.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-semibold text-gray-900">My Purchase Offers</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Houses I offered to buy</h2>
           <div className="space-y-2">
             {offers.map((o) => (
               <div key={o.id} className="rounded-lg border border-gray-200 bg-white p-3">
@@ -121,12 +126,15 @@ export default async function MyRentalsPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-brand-700">{formatNaira(o.amount)}</p>
-                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[o.status] ?? "bg-gray-100"}`}>{o.status}</span>
+                    <span className={`inline-block rounded px-2 py-1 text-xs font-semibold ${STATUS_STYLES[o.status] ?? "bg-gray-100"}`}>
+                      {offerStatusLabel(o.status, "buyer")}
+                    </span>
                   </div>
                 </div>
                 {o.status === "COUNTERED" && o.counterAmount && (
                   <p className="mt-2 text-sm text-blue-700">
-                    Landlord&apos;s counter: {formatNaira(o.counterAmount)} {o.counterMessage && `— "${o.counterMessage}"`}
+                    The owner is asking for {formatNaira(o.counterAmount)} instead
+                    {o.counterMessage && ` — "${o.counterMessage}"`}
                   </p>
                 )}
                 {(o.status === "PENDING" || o.status === "COUNTERED") && (

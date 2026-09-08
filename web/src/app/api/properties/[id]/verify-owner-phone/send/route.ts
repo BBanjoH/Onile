@@ -3,8 +3,14 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { effectiveOwner, otpExpiryDate } from "@/lib/verification";
 import { sendSms, generateOtp } from "@/lib/sms";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Each SMS costs real money once a provider is wired up, so cap how fast
+  // one person can trigger them.
+  const limit = rateLimit(req, "otp-send", { limit: 5, windowMs: 15 * 60_000 });
+  if (!limit.ok) return rateLimitResponse(limit);
+
   const { id } = await params;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -23,7 +23,10 @@ model User {
   id              String   @id @default(cuid())
   name            String
   email           String   @unique
-  phone           String
+  // Stored normalised (2348031234567 — see src/lib/phone.ts) and unique,
+  // because a phone number is a login identity in its own right here: many
+  // landlords have no email address they can reliably recall.
+  phone           String   @unique
   passwordHash    String
   // TENANT | LANDLORD | ADMIN
   role            String   @default("TENANT")

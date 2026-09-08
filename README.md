@@ -10,6 +10,25 @@ buyers find and contact landlords **directly**, and lets past tenants leave
 **honest reviews and complaints** about a property so the next person isn't
 walking in blind.
 
+## Going live
+
+**[`LAUNCH.md`](LAUNCH.md) is a step-by-step guide, written for someone who
+is not a programmer**, covering everything needed to put Onile on the
+internet: the database, the hosting, the web address, the admin account,
+and online rent payment. It also lists honestly what Onile does *not* do
+yet, so nothing surprises you after launch.
+
+## Built for elderly landlords
+
+Onile's main customer is often 55+ and not confident with technology, so
+the interface is designed around that: large text with a one-tap **A++**
+control that enlarges the whole app, buttons big enough for unsteady
+hands, higher-contrast colours, plain-English wording everywhere (no
+`OVERDUE`, just "Late — not paid"), login by phone number for people who
+don't use email, a home screen that simply tells you what needs doing
+today, and a Help page with a real phone number on it. Details in
+`web/README.md`.
+
 ## What's in this repo
 
 ```

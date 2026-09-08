@@ -4,6 +4,30 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  // This script creates demo accounts whose password is publicly known
+  // from the README. Running it against a live database would hand anyone
+  // a working landlord and admin login, so refuse unless someone very
+  // deliberately overrides it.
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED_IN_PRODUCTION !== "yes") {
+    console.error(
+      [
+        "",
+        "Refusing to seed demo data in production.",
+        "",
+        "This script creates example accounts with the password 'password123',",
+        "which would let anyone log in to your live site as a landlord or admin.",
+        "",
+        "If you are certain you want demo data (e.g. on a staging copy), run:",
+        "  ALLOW_SEED_IN_PRODUCTION=yes npm run db:seed",
+        "",
+        "To create a real administrator account instead, run:",
+        "  npm run create-admin",
+        "",
+      ].join("\n"),
+    );
+    process.exit(1);
+  }
+
   const passwordHash = await bcrypt.hash("password123", 10);
 
   const landlord1 = await prisma.user.upsert({

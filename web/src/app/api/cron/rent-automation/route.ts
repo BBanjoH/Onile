@@ -16,7 +16,11 @@ import { ensureUpcomingRentPayment, flagOverduePayments } from "@/lib/rentAutoma
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (secret) {
-    const provided = req.headers.get("x-cron-secret") ?? new URL(req.url).searchParams.get("secret");
+    // Vercel Cron sends "Authorization: Bearer <CRON_SECRET>" automatically;
+    // the other two forms let any scheduler (GitHub Actions, cron-job.org)
+    // call this too.
+    const bearer = req.headers.get("authorization")?.replace(/^Bearer /i, "");
+    const provided = bearer ?? req.headers.get("x-cron-secret") ?? new URL(req.url).searchParams.get("secret");
     if (provided !== secret) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

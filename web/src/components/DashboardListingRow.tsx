@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatNaira, priceFrequencyLabel, LISTING_STATUSES } from "@/lib/constants";
+import { listingStatusLabel } from "@/lib/labels";
 import TrustBadge from "@/components/TrustBadge";
 import VerificationPanel from "@/components/VerificationPanel";
 import type { TrustTier } from "@/lib/verification";
@@ -94,7 +95,7 @@ export default function DashboardListingRow({ property }: Props) {
           >
             {LISTING_STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s.replace("_", " ")}
+                {listingStatusLabel(s)}
               </option>
             ))}
           </select>
