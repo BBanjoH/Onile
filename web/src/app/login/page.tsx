@@ -103,6 +103,12 @@ export default function LoginPage() {
         </Link>
       </p>
 
+      <p className="mt-4 text-center">
+        <Link href="/forgot-password" className="font-semibold text-brand-700 underline">
+          I forgot my password
+        </Link>
+      </p>
+
       <p className="mt-6 text-center">
         <Link href="/help" className="font-medium text-brand-700 underline">
           Need help logging in?

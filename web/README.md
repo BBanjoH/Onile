@@ -38,6 +38,14 @@ anything:
   sensitivity well before acuity.
 - **Help is always one tap away**, with a real WhatsApp number and phone
   number on it (`/help`).
+- **Photos are taken, not linked.** `PhotoUpload.tsx` opens the phone
+  camera or gallery and shrinks the picture on the device before sending
+  (1280px, JPEG q0.72 — a 5MB phone photo becomes ~200KB), because mobile
+  data is a real cost for this audience. Used for both property photos and
+  ownership documents.
+- **Reminders go out by text**, not just as something to notice in-app —
+  see `src/lib/reminders.ts`. A landlord who never opens Onile still hears
+  that their tenant hasn't paid.
 
 ## Features
 
@@ -223,6 +231,7 @@ Other scripts:
 | Command | What it does |
 | ------- | ------------ |
 | `npm run create-admin` | Creates (or promotes) an admin account — the only way to make one, by design |
+| `npm run reset-password` | Sets a new password for any account, for support calls. Never changes what the account can do |
 | `npm run db:migrate` | `prisma migrate deploy`, for applying migrations in production |
 | `npm run db:seed` | Demo data. **Refuses to run in production** — it creates accounts with a publicly-known password |
 
@@ -293,6 +302,10 @@ All routes are under `/api` and return JSON:
 - `GET|POST /api/offers`, `PATCH /api/offers/:id` — make an offer on a `SALE` listing (buyer); accept/reject/counter (seller) or accept/decline/withdraw (buyer)
 - `GET /api/cron/rent-automation` — generates upcoming rent installments and flags overdue ones; optionally protected by `CRON_SECRET` (accepts a bearer token, an `x-cron-secret` header, or `?secret=`, so it works with Vercel Cron out of the box — see `vercel.json`)
 - `GET /api/health` — for uptime monitors; checks the database really answers, and returns 503 if not
+- `POST /api/auth/forgot-password` — sends a reset code by text; answers identically whether or not the account exists
+- `POST /api/auth/reset-password` — consumes the code (single-use, 5 guesses, 15-minute expiry) and signs the user in
+- `POST /api/uploads` — one photo or document from a phone; see `src/lib/storage.ts` for where it lands
+- `GET /api/files/:id` — serves database-stored uploads; ownership documents only to their uploader or an admin
 - `POST /api/payments/:id/checkout` — tenant starts an online payment; returns a Flutterwave hosted checkout `link`
 - `GET /api/payments/callback` — Flutterwave redirect target after checkout; re-verifies server-side before marking paid
 - `POST /api/webhooks/flutterwave` — durable payment confirmation, authenticated via the `verif-hash` header

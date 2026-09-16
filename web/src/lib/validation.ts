@@ -16,6 +16,18 @@ import {
   MAINTENANCE_STATUSES,
 } from "@/lib/constants";
 
+// An uploaded file is referenced either by a full URL (Supabase Storage
+// and other object stores) or by an app-relative path like
+// /api/files/abc123 (the database storage driver). Both are valid; a
+// protocol-relative or javascript: URL is not.
+const fileReferenceSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => /^\/(?!\/)[\w\-./]*$/.test(value) || /^https:\/\/[^\s]+$/.test(value) || /^http:\/\/[^\s]+$/.test(value),
+    "That does not look like a valid file",
+  );
+
 // People write their number every which way — 0803 123 4567, +234 803 123
 // 4567, 234-803-123-4567. Strip the punctuation first and judge the digits,
 // rather than making someone guess the format we happen to want.
@@ -40,6 +52,16 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Enter your password"),
 });
 
+export const forgotPasswordSchema = z.object({
+  identifier: z.string().trim().min(3, "Enter your phone number or email").max(200),
+});
+
+export const resetPasswordSchema = z.object({
+  identifier: z.string().trim().min(3).max(200),
+  code: z.string().trim().regex(/^[0-9]{6}$/, "Enter the 6-digit code from the text message"),
+  newPassword: z.string().min(8, "Your new password must be at least 8 characters").max(72),
+});
+
 export const createPropertySchema = z
   .object({
     title: z.string().trim().min(5).max(150),
@@ -53,7 +75,7 @@ export const createPropertySchema = z
     bedrooms: z.number().int().min(0).max(50).optional(),
     bathrooms: z.number().int().min(0).max(50).optional(),
     amenities: z.array(z.string().trim().min(1).max(50)).max(30).default([]),
-    imageUrls: z.array(z.string().trim().url()).max(10).default([]),
+    imageUrls: z.array(fileReferenceSchema).max(10).default([]),
     postedOnBehalf: z.boolean().default(false),
     ownerName: z.string().trim().max(100).default(""),
     ownerPhone: z.union([phoneSchema, z.literal("")]).default(""),
@@ -121,7 +143,7 @@ export const verifyOtpSchema = z.object({
 
 export const submitVerificationDocSchema = z.object({
   docType: z.enum(DOC_TYPES),
-  fileUrl: z.string().trim().url(),
+  fileUrl: fileReferenceSchema,
 });
 
 export const reviewVerificationDocSchema = z.object({

@@ -70,6 +70,39 @@ export function findConfigProblems(env: NodeJS.ProcessEnv = process.env): Config
         fix: "Copy the Secret Hash from Flutterwave (Settings > Webhooks) into FLW_SECRET_HASH.",
       });
     }
+    // Same reasoning as Flutterwave: a half-configured SMS provider is
+    // worse than none, because reset codes would silently never arrive.
+    if (env.SMS_PROVIDER === "termii" && !env.TERMII_API_KEY) {
+      problems.push({
+        variable: "TERMII_API_KEY",
+        problem: "SMS_PROVIDER is set to termii but the API key is missing, so no text messages would send.",
+        fix: "Add your Termii API key, or clear SMS_PROVIDER to turn text messages off.",
+      });
+    }
+    if (env.SMS_PROVIDER === "africastalking" && !(env.AT_API_KEY && env.AT_USERNAME)) {
+      problems.push({
+        variable: "AT_API_KEY / AT_USERNAME",
+        problem: "SMS_PROVIDER is set to africastalking but its credentials are incomplete.",
+        fix: "Add both AT_API_KEY and AT_USERNAME, or clear SMS_PROVIDER to turn text messages off.",
+      });
+    }
+    if (env.SMS_PROVIDER && !["termii", "africastalking"].includes(env.SMS_PROVIDER)) {
+      problems.push({
+        variable: "SMS_PROVIDER",
+        problem: `"${env.SMS_PROVIDER}" is not a provider Onile knows about.`,
+        fix: 'Use "termii" or "africastalking", or leave it empty.',
+      });
+    }
+
+    const supabaseBits = [env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY, env.SUPABASE_STORAGE_BUCKET].filter(Boolean).length;
+    if (supabaseBits > 0 && supabaseBits < 3) {
+      problems.push({
+        variable: "SUPABASE_URL / SUPABASE_SERVICE_KEY / SUPABASE_STORAGE_BUCKET",
+        problem: "Photo storage is only partly configured, so uploading a photo would fail.",
+        fix: "Set all three, or remove all three to keep photos in the database.",
+      });
+    }
+
     if (env.FLW_SECRET_KEY?.includes("TEST")) {
       problems.push({
         variable: "FLW_SECRET_KEY",

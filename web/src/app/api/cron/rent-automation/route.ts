@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { ensureUpcomingRentPayment, flagOverduePayments } from "@/lib/rentAutomation";
+import { sendRentReminders } from "@/lib/reminders";
 
 // Runs the rent-schedule automation across every active lease: generates
 // the next due installment for leases approaching one, and flips anything
@@ -32,5 +33,8 @@ export async function GET(req: NextRequest) {
   }
   const overdueCount = await flagOverduePayments();
 
-  return NextResponse.json({ leasesChecked: activeLeases.length, newlyOverdue: overdueCount });
+  // Order matters: flag what's late first, then tell people about it.
+  const reminders = await sendRentReminders();
+
+  return NextResponse.json({ leasesChecked: activeLeases.length, newlyOverdue: overdueCount, reminders });
 }

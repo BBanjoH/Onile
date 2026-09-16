@@ -256,10 +256,55 @@ will be on phones.
 
 **Can wait**
 - [ ] Flutterwave online payment (Step 6)
-- [ ] SMS provider for verification codes — see `web/README.md`. Until this
-      is done, the owner phone-verification codes are only written to the
-      server log, so that one trust feature is not usable by real users.
+- [ ] Text messages (Step 9) — until this is set up, password reset codes
+      and owner verification codes are only written to the server log, and
+      nobody gets a text when rent is late
 - [ ] Uptime monitoring and a backup habit (Step 8)
+
+---
+
+## Step 9 — Text messages (optional, 20 minutes)
+
+Text messages are what actually reach an older landlord who does not open
+apps. Once switched on, Onile will:
+
+- text a tenant a few days before rent is due, and again when it is late;
+- text the landlord when a tenant has not paid;
+- send password-reset codes, so people can get back in without calling you;
+- send the codes that verify a property owner's phone number.
+
+It will not pester anybody: the same person is never texted about the same
+rent payment more than once a week.
+
+1. Sign up at **termii.com** (or **africastalking.com**) and add credit.
+   Termii is usually simpler for Nigerian numbers.
+2. Register a **Sender ID** — the name that appears as the sender. Ask for
+   `Onile`. Approval takes a day or two.
+3. Add these to Vercel's Environment Variables and redeploy:
+
+   | Name | Value |
+   |------|-------|
+   | `SMS_PROVIDER` | `termii` |
+   | `TERMII_API_KEY` | your API key |
+   | `TERMII_SENDER_ID` | `Onile` (once approved) |
+
+   For Africa's Talking instead, set `SMS_PROVIDER` to `africastalking`
+   and add `AT_API_KEY` and `AT_USERNAME`.
+4. Test it: use **I forgot my password** on your own account and check the
+   text arrives.
+
+Until you do this, everything still works — reset codes are simply shown on
+screen instead of texted, and you can reset anyone's password yourself by
+running `npm run reset-password`.
+
+### Where photos are stored
+
+By default, uploaded photos are kept in your database, which needs no setup
+and is fine for your first few hundred listings. When you outgrow that,
+create a **public** storage bucket in Supabase (Storage → New bucket) and
+set `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` and `SUPABASE_STORAGE_BUCKET`.
+New photos go there from then on, and old ones keep working. Nothing needs
+moving.
 
 ---
 
@@ -267,16 +312,15 @@ will be on phones.
 
 Being straight with you, so nothing surprises you after launch:
 
-- **Photo uploads.** Landlords paste a link to a photo rather than
-  uploading from their phone. For the audience this app is built for, this
-  is the single biggest thing to fix next.
-- **Text-message alerts.** Reminders about late rent appear inside the app,
-  but nothing texts or emails a landlord who hasn't opened it. Wiring up an
-  SMS provider (Termii or Africa's Talking) would fix both this and the
-  verification codes above.
-- **Password reset.** Someone who forgets their password must contact you
-  to have it changed. This is why the support number on the Help page
-  matters from day one.
 - **In-app messaging.** Landlords and tenants talk on WhatsApp, which is
   what they already use — but it does mean conversations happen outside
-  Onile.
+  Onile, where you cannot help if there is a dispute.
+- **Email.** Everything reaches people by text message or WhatsApp. That
+  suits the audience, but it means you cannot send a monthly statement or
+  a receipt by email yet.
+- **Automatic payouts.** When a tenant pays online, the money lands in
+  your Flutterwave account and you settle with the landlord. Onile does not
+  split and forward it automatically.
+- **A native app in the Play Store.** Onile installs to the home screen
+  from the browser ("Add to Home Screen") and there is a wrapper in
+  `mobile/` that can be built into a real Android app when you want one.

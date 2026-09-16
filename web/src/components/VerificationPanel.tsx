@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { DOC_TYPES, DOC_TYPE_LABELS, type DocType } from "@/lib/constants";
 import TrustBadge from "@/components/TrustBadge";
+import PhotoUpload, { type UploadedFile } from "@/components/PhotoUpload";
 import type { TrustTier } from "@/lib/verification";
 
 type Doc = { id: string; docType: string; status: string; reviewerNote: string };
@@ -34,6 +35,7 @@ export default function VerificationPanel({
 
   const [docType, setDocType] = useState<DocType>("C_OF_O");
   const [fileUrl, setFileUrl] = useState("");
+  const [docFile, setDocFile] = useState<UploadedFile | null>(null);
   const [docError, setDocError] = useState<string | null>(null);
   const [docSubmitting, setDocSubmitting] = useState(false);
 
@@ -90,6 +92,7 @@ export default function VerificationPanel({
         return;
       }
       setFileUrl("");
+      setDocFile(null);
       router.refresh();
     } finally {
       setDocSubmitting(false);
@@ -196,16 +199,20 @@ export default function VerificationPanel({
               </option>
             ))}
           </select>
-          <input
-            required
-            placeholder="Link to a photo/scan of the document"
-            value={fileUrl}
-            onChange={(e) => setFileUrl(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+          <PhotoUpload
+            kind="OWNERSHIP_DOCUMENT"
+            max={1}
+            value={docFile ? [docFile] : []}
+            onChange={(files) => {
+              setDocFile(files[0] ?? null);
+              setFileUrl(files[0]?.url ?? "");
+            }}
+            label="The document itself"
+            hint="Take a clear photo of the paper, or choose a PDF. Only you and Onile staff can see it."
           />
           <button
             type="submit"
-            disabled={docSubmitting}
+            disabled={docSubmitting || !fileUrl}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
           >
             {docSubmitting ? "Submitting..." : "Submit for review"}

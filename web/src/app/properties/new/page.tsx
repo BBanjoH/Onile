@@ -13,6 +13,7 @@ import {
   type PropertyType,
   type RelationshipType,
 } from "@/lib/constants";
+import PhotoUpload, { type UploadedFile } from "@/components/PhotoUpload";
 
 export default function NewPropertyPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function NewPropertyPage() {
   const [bedrooms, setBedrooms] = useState("");
   const [bathrooms, setBathrooms] = useState("");
   const [amenities, setAmenities] = useState("");
-  const [imageUrls, setImageUrls] = useState("");
+  const [photos, setPhotos] = useState<UploadedFile[]>([]);
   const [postedOnBehalf, setPostedOnBehalf] = useState(false);
   const [ownerName, setOwnerName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
@@ -59,10 +60,7 @@ export default function NewPropertyPage() {
             .split(",")
             .map((a) => a.trim())
             .filter(Boolean),
-          imageUrls: imageUrls
-            .split("\n")
-            .map((u) => u.trim())
-            .filter(Boolean),
+          imageUrls: photos.map((p) => p.url),
           postedOnBehalf,
           ownerName: postedOnBehalf ? ownerName : "",
           ownerPhone: postedOnBehalf ? ownerPhone : "",
@@ -293,15 +291,8 @@ export default function NewPropertyPage() {
           />
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Photo URLs (one per line, optional)</label>
-          <textarea
-            rows={3}
-            placeholder="https://..."
-            value={imageUrls}
-            onChange={(e) => setImageUrls(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
+        <div className="rounded-lg border border-gray-200 p-4">
+          <PhotoUpload value={photos} onChange={setPhotos} />
         </div>
 
         <label className="flex items-start gap-2 text-sm text-gray-700">

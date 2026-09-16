@@ -41,6 +41,7 @@ model User {
   leasesAsLandlord  Lease[]              @relation("LandlordLeases")
   maintenanceOpened MaintenanceRequest[]
   offersMade        PurchaseOffer[]
+  passwordResets    PasswordResetCode[]
 
   @@index([role])
 }
@@ -182,6 +183,10 @@ model RentPayment {
 
   recordedById String?
 
+  // When we last texted somebody about this installment, so the daily job
+  // reminds rather than nags (see src/lib/reminders.ts).
+  lastReminderAt DateTime?
+
   // Flutterwave online-payment reconciliation. flwTxRef is our own
   // generated reference (set when a "Pay Now" checkout is initiated);
   // flwTransactionId is Flutterwave's transaction id, set only once the
@@ -262,6 +267,31 @@ model PropertyImage {
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
+// An uploaded file — a property photo, or an ownership document.
+//
+// Onile's landlords take a picture of the house with their phone; asking
+// them to host an image somewhere and paste a link was never realistic.
+// Files are held here when no external object storage is configured, so
+// uploads work with zero setup (see src/lib/storage.ts). Point
+// SUPABASE_* at a storage bucket and new uploads go there instead, which
+// is what a busy deployment should do.
+model StoredFile {
+  id        String   @id @default(cuid())
+  mimeType  String
+  byteSize  Int
+  // Only populated by the database storage driver.
+  data      Bytes?
+  // The original filename, kept for documents so an admin reviewing a
+  // C of O can see what they were sent.
+  filename  String   @default("")
+  // PROPERTY_PHOTO | OWNERSHIP_DOCUMENT
+  kind      String
+  uploadedById String
+  createdAt DateTime @default(now())
+
+  @@index([uploadedById])
+}
+
 // Ownership documents submitted for a specific listing (a Certificate of
 // Occupancy, Deed of Assignment, a recent Land Use Charge/utility bill in
 // the owner's name, etc). Reviewed manually by an admin — this is the
@@ -306,6 +336,25 @@ model OtpCode {
   createdAt  DateTime  @default(now())
 
   @@index([propertyId, phone])
+}
+
+// A short-lived code for someone who has forgotten their password.
+//
+// Sent to the phone number on the account, because that is the thing
+// Onile's landlords reliably have and reliably read. Codes are single-use
+// and expire quickly; attempts are counted so a 6-digit code can't be
+// guessed by brute force.
+model PasswordResetCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  expiresAt DateTime
+  consumedAt DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Review {
