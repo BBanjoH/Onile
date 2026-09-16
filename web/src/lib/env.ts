@@ -24,7 +24,17 @@ export function findConfigProblems(env: NodeJS.ProcessEnv = process.env): Config
     problems.push({
       variable: "DATABASE_URL",
       problem: "No database is configured.",
-      fix: 'Set DATABASE_URL to your database address (for local testing: "file:./dev.db").',
+      fix: 'Copy it from Supabase: Connect → ORMs. It starts with "postgresql://".',
+    });
+  }
+
+  // Migrations run against DIRECT_URL, so a missing one only bites at
+  // deploy time — which is exactly when it is most confusing.
+  if (!env.DIRECT_URL) {
+    problems.push({
+      variable: "DIRECT_URL",
+      problem: "Missing. Database updates cannot be applied when the site deploys.",
+      fix: "Copy it from the same Supabase Connect → ORMs page, next to DATABASE_URL.",
     });
   }
 

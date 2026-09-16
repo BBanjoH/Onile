@@ -42,13 +42,14 @@ We will use **Supabase**, because it is free to start and reliable.
      *West EU (London)* or *EU (Frankfurt)*). This makes the site faster
      for Nigerian users.
 3. Wait about 2 minutes for it to finish setting up.
-4. Click **Connect** at the top of the page, choose the **ORMs** tab, and
-   copy the long line that starts with `postgresql://`. That whole line is
-   your **DATABASE_URL**. Paste it somewhere safe.
-   - If it contains `[YOUR-PASSWORD]`, replace that part with the password
-     you saved in step 2.
+4. Click **Connect** at the top of the page, then choose the **ORMs** tab.
+   It shows you **two** lines. Copy both and paste them somewhere safe:
+   - one labelled `DATABASE_URL` (it has **6543** in it)
+   - one labelled `DIRECT_URL` (it has **5432** in it)
+5. Both lines contain `[YOUR-PASSWORD]`. Replace that bit — including the
+   square brackets — with the password you saved in step 2.
 
-> **Keep this line secret.** Anyone who has it can read all your data.
+> **Keep these lines secret.** Anyone who has them can read all your data.
 
 ---
 
@@ -82,7 +83,8 @@ the same people as the technology Onile is built with.
 
    | Name | Value |
    |------|-------|
-   | `DATABASE_URL` | the `postgresql://…` line from Step 1 |
+   | `DATABASE_URL` | the **6543** line from Step 1 |
+   | `DIRECT_URL` | the **5432** line from Step 1 |
    | `JWT_SECRET` | the jumble from Step 2 |
    | `NEXT_PUBLIC_APP_URL` | leave for now — you'll set it in Step 4 |
    | `NEXT_PUBLIC_SUPPORT_PHONE` | your WhatsApp number, e.g. `2348012345678` |
@@ -92,27 +94,13 @@ the same people as the technology Onile is built with.
 
 6. Click **Deploy** and wait a few minutes.
 
-**Before it will work, switch the database over to Postgres.** In the file
-`web/prisma/schema.prisma`, near the top, change:
+That is it — **you do not need to run any commands**. Onile creates all of
+its own database tables while it deploys, and does the same automatically
+every time the app is updated in future.
 
-```
-provider = "sqlite"
-```
-to
-```
-provider = "postgresql"
-```
-
-Then, on your own computer, in the `web` folder, run these two commands
-once to create the tables in your new database:
-
-```bash
-npx prisma migrate dev --name init
-npx prisma migrate deploy
-```
-
-(If you are not comfortable running commands, this is the one place worth
-asking a technical friend for 10 minutes of help.)
+> **Which branch?** If Vercel asks, or if the site deploys empty, check
+> Settings → Git and make sure the Production Branch is the one your code
+> is on. If you merged the work into `main`, that's `main`.
 
 ---
 
@@ -234,7 +222,8 @@ will be on phones.
 |---|---|
 | Build fails on Vercel | Root Directory isn't set to `web` (Step 3.4) |
 | "Onile cannot start — something in the configuration needs fixing" | The message lists exactly which setting to fix. Onile checks itself at startup on purpose. |
-| Site loads but nothing saves | `DATABASE_URL` is wrong, or you skipped `prisma migrate deploy` |
+| Site loads but nothing saves | `DATABASE_URL` is wrong, or you forgot to replace `[YOUR-PASSWORD]` in it |
+| Build fails mentioning "migrate" or "P1001" | `DIRECT_URL` is missing or wrong — it's the **5432** line from Supabase |
 | Nobody can log in | `JWT_SECRET` is missing or was changed (changing it logs everybody out) |
 | "Pay Now" doesn't appear | The three `FLW_` settings aren't all set — this is deliberate |
 | Payment made but not recorded | Webhook URL or `FLW_SECRET_HASH` is wrong in Flutterwave |
@@ -244,10 +233,9 @@ will be on phones.
 ## The checklist
 
 **Must do before launch**
-- [ ] Database created (Step 1)
+- [ ] Database created, both connection lines saved (Step 1)
 - [ ] `JWT_SECRET` generated and saved (Step 2)
 - [ ] Site deployed, Root Directory set to `web` (Step 3)
-- [ ] Database switched to `postgresql` and migrated (Step 3)
 - [ ] Domain connected and `NEXT_PUBLIC_APP_URL` set (Step 4)
 - [ ] Admin account created (Step 5)
 - [ ] Support phone and email set, and tested (Step 3, Step 7)

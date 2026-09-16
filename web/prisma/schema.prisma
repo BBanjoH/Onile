@@ -1,22 +1,32 @@
 // Onile database schema.
 //
-// Dev default is SQLite (zero-config, file-based) so the app runs anywhere
-// without provisioning external infra. For production, point DATABASE_URL
-// at a managed Postgres instance (e.g. Supabase/Railway/RDS) and change
-// `provider` below to "postgresql", then re-run `npx prisma migrate dev`.
+// Postgres, because that is what Onile runs on in production (Supabase).
+// Migrations in prisma/migrations are applied automatically on every
+// deploy — see the buildCommand in vercel.json — so nobody has to run a
+// database command by hand to launch or to ship a schema change.
 //
-// SQLite has no native enum type, so fields that are conceptually enums
-// (role, propertyType, purpose, status, reviewType) are stored as String
-// and validated at the API layer with zod (see src/lib/validation.ts).
-// This keeps the same schema working unchanged on Postgres too.
+// Two connection strings, which is what Supabase's own "Connect → ORMs"
+// tab hands you:
+//   DATABASE_URL — the pooled connection (port 6543), used by the running
+//                  app. Serverless opens and drops connections constantly,
+//                  and the pooler is what stops that exhausting Postgres.
+//   DIRECT_URL   — the direct connection (port 5432), used only when
+//                  applying migrations, which need a real session and the
+//                  advisory locks the pooler doesn't support.
+//
+// Fields that are conceptually enums (role, propertyType, purpose, status,
+// reviewType) are stored as String and validated at the API layer with zod
+// (see src/lib/validation.ts) rather than as native Postgres enums, which
+// keeps adding a new status a code change rather than a migration.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {

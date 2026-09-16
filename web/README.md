@@ -218,13 +218,23 @@ comment at the top of the schema file for the one-line switch).
 
 ## Local setup
 
+Onile runs on Postgres. The quickest way to get one is a free Supabase
+project (see `../LAUNCH.md` Step 1) — create a second one if you want a
+scratch database separate from production.
+
 ```bash
 npm install
-cp .env.example .env        # then edit JWT_SECRET
-npx prisma db push          # create the SQLite database from the schema
+cp .env.example .env        # then set DATABASE_URL, DIRECT_URL, JWT_SECRET
+npx prisma migrate deploy   # create the tables
 npm run db:seed             # seed demo landlords, tenants, listings, reviews
 npm run dev                 # http://localhost:3000
 ```
+
+Deploys apply migrations by themselves — `vercel.json` sets the build
+command to `prisma generate && prisma migrate deploy && next build`, so
+shipping a schema change never needs a database command run by hand. After
+editing `schema.prisma`, generate the migration with
+`npx prisma migrate dev --name <what-changed>` and commit it.
 
 Other scripts:
 
