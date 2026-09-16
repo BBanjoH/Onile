@@ -4,6 +4,7 @@ import { hashPassword, setSessionCookie } from "@/lib/auth";
 import { signupSchema } from "@/lib/validation";
 import { normalizePhone } from "@/lib/phone";
 import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { promoteBootstrapAdmin } from "@/lib/bootstrapAdmin";
 
 export async function POST(req: NextRequest) {
   const limit = rateLimit(req, "signup", { limit: 5, windowMs: 60 * 60_000 });
@@ -37,7 +38,9 @@ export async function POST(req: NextRequest) {
 
   await setSessionCookie(user.id);
 
+  const promoted = await promoteBootstrapAdmin(user);
+
   return NextResponse.json({
-    user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    user: { id: user.id, name: user.name, email: user.email, role: promoted ? "ADMIN" : user.role },
   });
 }

@@ -90,6 +90,7 @@ the same people as the technology Onile is built with.
    | `NEXT_PUBLIC_SUPPORT_PHONE` | your WhatsApp number, e.g. `2348012345678` |
    | `NEXT_PUBLIC_SUPPORT_EMAIL` | your support email |
    | `NEXT_PUBLIC_COMPANY_NAME` | your business name, for the legal pages |
+   | `BOOTSTRAP_ADMIN_EMAIL` | your own email — this is how you become the administrator (Step 5) |
    | `CRON_SECRET` | another jumble from generate-secret.vercel.app |
 
 6. Click **Deploy** and wait a few minutes.
@@ -124,19 +125,24 @@ every time the app is updated in future.
 
 You need one administrator account. This is the account that approves
 ownership documents and handles reports of agents pretending to be
-landlords. There is no way to sign up as an admin on the website itself,
-on purpose.
+landlords. There is deliberately no "sign up as an admin" button, or
+anyone could give themselves that power.
 
-On your computer, inside the `web` folder, run:
+Instead:
 
-```bash
-npm run create-admin
-```
+1. In Vercel, go to **Settings → Environment Variables** and add
+   `BOOTSTRAP_ADMIN_EMAIL`, set to **your own email address**. Redeploy.
+2. On your live site, tap **Sign up** and create an account using that
+   exact email address.
+3. That account is now an administrator. Go to `yourdomain.com/admin`.
 
-It asks for your name, email, phone and a password. Use a **strong**
-password — this account can see everything.
+If you already signed up before doing this, don't worry — just log out and
+log back in, and you'll be made an administrator then.
 
-Then log in on your live site and go to `yourdomain.com/admin`.
+Use a **strong** password: this account can see everything.
+
+> If you'd rather do it from a terminal, `npm run create-admin` still
+> works and does the same job.
 
 > **Never run `npm run db:seed` against your live site.** That creates
 > demo accounts with a publicly-known password. Onile now refuses to do it

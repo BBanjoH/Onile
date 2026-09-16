@@ -4,6 +4,7 @@ import { verifyPassword, setSessionCookie } from "@/lib/auth";
 import { loginSchema } from "@/lib/validation";
 import { normalizePhone, looksLikeEmail } from "@/lib/phone";
 import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { promoteBootstrapAdmin } from "@/lib/bootstrapAdmin";
 
 export async function POST(req: NextRequest) {
   const limit = rateLimit(req, "login", { limit: 10, windowMs: 5 * 60_000 });
@@ -34,7 +35,10 @@ export async function POST(req: NextRequest) {
 
   await setSessionCookie(user.id);
 
+  // Lets the site owner become an admin without touching a terminal.
+  const promoted = await promoteBootstrapAdmin(user);
+
   return NextResponse.json({
-    user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    user: { id: user.id, name: user.name, email: user.email, role: promoted ? "ADMIN" : user.role },
   });
 }

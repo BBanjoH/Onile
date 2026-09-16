@@ -240,7 +240,7 @@ Other scripts:
 
 | Command | What it does |
 | ------- | ------------ |
-| `npm run create-admin` | Creates (or promotes) an admin account — the only way to make one, by design |
+| `npm run create-admin` | Creates (or promotes) an admin account. There's no admin signup on the site by design; the other route is `BOOTSTRAP_ADMIN_EMAIL`, which promotes that one address on signup or next login so a non-technical owner never needs a terminal |
 | `npm run reset-password` | Sets a new password for any account, for support calls. Never changes what the account can do |
 | `npm run db:migrate` | `prisma migrate deploy`, for applying migrations in production |
 | `npm run db:seed` | Demo data. **Refuses to run in production** — it creates accounts with a publicly-known password |
